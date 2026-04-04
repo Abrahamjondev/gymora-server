@@ -28,11 +28,10 @@ export class MemberService {
 
 		if (!response || response.memberStatus === MemberStatus.DELETE) {
 			throw new InternalServerErrorException(Message.NO_MEMBER_NICK);
-		} else if (!response || response.memberStatus !== MemberStatus.BLOCK) {
+		} else if (response.memberStatus === MemberStatus.BLOCK) {
 			throw new InternalServerErrorException(Message.BLOCKED_USER);
 		}
 		//TODO compare password
-
 
 		const isMarch = memberPassword === response.memberPassword;
 		if (!isMarch) {
