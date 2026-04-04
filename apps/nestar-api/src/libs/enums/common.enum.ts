@@ -1,4 +1,4 @@
-export enum Messsage {
+export enum Message {
 	SOMETHING_WENT_WRONG = 'Something went wrong!',
 	NO_DATA_FOUND = 'No data found!',
 	CREATE_FAILED = 'Create failed!',
