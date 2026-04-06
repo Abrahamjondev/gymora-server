@@ -15,11 +15,11 @@ export class MemberService {
 		//TODO hash password
 		try {
 			const reesult = await this.memberModel.create(input);
-			//TODO Authentication cisa TOKEN
+			//TODO Authentication via TOKEN
 			return reesult;
-		} catch (err) {
-			console.log('Error, service model', err);
-			throw new BadGatewayException(err);
+		} catch (err: any) {
+			console.log('Error, service model', err.message);
+			throw new BadGatewayException(Message.USED_MEMBER_NICK_OR_PHONE);
 		}
 	}
 	public async login(input: LoginInput): Promise<Member> {
