@@ -23,7 +23,7 @@ const MemberSchema = new Schema(
 			index: { unique: true, sparse: true },
 			required: true,
 		},
-		membernick: {
+		memberNick: {
 			type: String,
 			index: { unique: true, sparse: true },
 			required: true,
