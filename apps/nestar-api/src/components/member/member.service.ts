@@ -18,9 +18,11 @@ export class MemberService {
 		//TODO hash password
 		input.memberPassword = await this.authService.hashPassword(input.memberPassword);
 		try {
-			const reesult = await this.memberModel.create(input);
+			const result = await this.memberModel.create(input);
 			//TODO Authentication via TOKEN
-			return reesult;
+			result.accessToken = await this.authService.createToken(result);
+
+			return result;
 		} catch (err: any) {
 			console.log('Error, service model', err.message);
 			throw new BadGatewayException(Message.USED_MEMBER_NICK_OR_PHONE);
@@ -35,12 +37,11 @@ export class MemberService {
 		} else if (response.memberStatus === MemberStatus.BLOCK) {
 			throw new InternalServerErrorException(Message.BLOCKED_USER);
 		}
-		//TODO compare password
 
+		//TODO compare password
 		const isMarch = await this.authService.comparePassword(input.memberPassword, response.memberPassword);
-		if (!isMarch) {
-			throw new InternalServerErrorException(Message.WRONG_PASSWORD);
-		}
+		if (!isMarch) throw new InternalServerErrorException(Message.WRONG_PASSWORD);
+		response.accessToken = await this.authService.createToken(response);
 
 		return response;
 	}
