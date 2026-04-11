@@ -9,6 +9,7 @@ import * as mongoose from 'mongoose';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import type { ObjectId } from 'mongoose';
 
 @Resolver()
 export class MemberResolver {
@@ -27,7 +28,7 @@ export class MemberResolver {
 	//Authenticated
 	@UseGuards(AuthGuard)
 	@Mutation(() => String)
-	public async updateMember(@AuthMember('_id') ObjectId: mongoose.ObjectId): Promise<string> {
+	public async updateMember(@AuthMember('_id') memberId: ObjectId): Promise<string> {
 		console.log('Mutation updateMember ');
 		return this.memberService.updateMember();
 	}
@@ -37,7 +38,6 @@ export class MemberResolver {
 	public async checkAuth(@AuthMember('memberNick') memberNick: string): Promise<string> {
 		console.log('Query checkAuth ');
 		console.log('membernick', memberNick);
-
 		return `Hi ${memberNick}, you are authenticated!`;
 	}
 	@Roles(MemberType.USER, MemberType.AGENT)
