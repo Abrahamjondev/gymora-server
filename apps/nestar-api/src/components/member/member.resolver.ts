@@ -12,6 +12,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import type { ObjectId } from 'mongoose';
 import { log } from 'console';
 import { MemberUpdate } from '../../libs/dto/member/member.update';
+import { shapeIntoMongoObjectid } from '../../libs/config';
 
 @Resolver()
 export class MemberResolver {
@@ -55,10 +56,11 @@ export class MemberResolver {
 		return this.memberService.updateMember(memberId, input);
 	}
 
-	@Query(() => String)
-	public async getMember(): Promise<string> {
+	@Query(() => Member)
+	public async getMember(@Args('memberId') input: string): Promise<Member> {
 		console.log('Query getMember ');
-		return this.memberService.getMember();
+		const targetId = shapeIntoMongoObjectid(input);
+		return this.memberService.getMember(targetId);
 	}
 
 	/** ADMIN **/
