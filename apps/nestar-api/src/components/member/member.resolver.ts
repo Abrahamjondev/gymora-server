@@ -5,12 +5,10 @@ import { Member, Members } from '../../libs/dto/member/member';
 import { UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
-import * as mongoose from 'mongoose';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { ObjectId } from 'mongoose';
-import { log } from 'console';
 import { MemberUpdate } from '../../libs/dto/member/member.update';
 import { shapeIntoMongoObjectid } from '../../libs/config';
 import { WithoutGuard } from '../auth/guards/without.guard';
@@ -45,7 +43,7 @@ export class MemberResolver {
 		console.log('Query checkAuthRoles ');
 		return `Hi ${authMember.memberNick}, you are ${authMember.memberType} (memberId: ${authMember._id})!`;
 	}
-
+	// shu yerdan
 	@UseGuards(AuthGuard)
 	@Mutation(() => Member)
 	public async updateMember(

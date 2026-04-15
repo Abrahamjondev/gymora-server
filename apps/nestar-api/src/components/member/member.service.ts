@@ -3,14 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Member, Members } from '../../libs/dto/member/member';
 import { AgentsInquiry, LoginInput, MemberInput, MembersInquiry } from '../../libs/dto/member/member.input';
-import { MemberStatus } from '../../libs/enums/member.enum';
+import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
 import { MemberUpdate } from '../../libs/dto/member/member.update';
-import { T } from '../../libs/types/common';
 import { ViewService } from '../view/view.service';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { ViewInput } from '../../libs/dto/view/view.input';
+import { T } from '../../libs/types/common';
 
 @Injectable()
 export class MemberService {
@@ -51,6 +51,7 @@ export class MemberService {
 
 		return response;
 	}
+	//shu yerdan
 	public async updateMember(memberId: ObjectId, input: MemberUpdate): Promise<Member> {
 		const result = await this.memberModel
 			.findOneAndUpdate({ _id: memberId, memberStatus: MemberStatus.ACTIVE }, input, { new: true })
@@ -89,10 +90,12 @@ export class MemberService {
 	public async getAgents(memberId: ObjectId, input: AgentsInquiry): Promise<Members> {
 		const { text } = input.search;
 		const match: T = {
-			memberType: 'AGENT',
+			memberType: MemberType.AGENT,
 			memberStatus: MemberStatus.ACTIVE,
 		};
 		const sort: T = { [input.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
+		//inputtan kelayotgan direction boyicha saralymiz
+		//agar berilmagan bolsa ozimiz belgilagan boyicha descending boyicha saralaymiz
 
 		if (text) match.memberNick = { $regex: new RegExp(text, 'i') };
 		console.log('match', match);
@@ -102,6 +105,8 @@ export class MemberService {
 				{ $match: match },
 				{ $sort: sort },
 				{
+					// FACET bu MongoDB aggregate ning pipeline bosqichi (stage).
+					// U bir xil ma'lumotga bir vaqtda bir nechta amal qilish imkonini beradi.
 					$facet: {
 						list: [{ $skip: (input.page - 1) * input.limit }, { $limit: input.limit }],
 						metaCounter: [{ $count: 'total' }],
