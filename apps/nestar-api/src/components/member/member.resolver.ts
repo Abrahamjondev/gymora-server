@@ -94,6 +94,10 @@ export class MemberResolver {
 	}
 
 	//UPLOADER
+	//UPLOADER
+	//UPLOADER
+	//UPLOADER
+	//UPLOADER
 	@UseGuards(AuthGuard)
 	@Mutation((returns) => String)
 	public async imageUploader(
