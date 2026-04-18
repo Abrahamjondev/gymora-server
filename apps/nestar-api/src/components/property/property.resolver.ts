@@ -56,6 +56,7 @@ export class PropertyResolver {
 		input._id = shapeIntoMongoObjectid(input._id);
 		return await this.propertyService.updateProperty(memberId, input);
 	}
+
 	@UseGuards(WithoutGuard)
 	@Query((returns) => Properties)
 	public async getProperties(
@@ -65,6 +66,7 @@ export class PropertyResolver {
 		console.log('Query: getProperties');
 		return await this.propertyService.getProperties(memberId, input);
 	}
+
 	@Roles(MemberType.AGENT)
 	@UseGuards(RolesGuard)
 	@Query((returns) => Properties)
@@ -77,6 +79,7 @@ export class PropertyResolver {
 	}
 
 	/** ADMIN **/
+
 	@Roles(MemberType.ADMIN)
 	@UseGuards(RolesGuard)
 	@Query((returns) => Properties)
@@ -87,6 +90,7 @@ export class PropertyResolver {
 		console.log('Query: getAllPropertiesByAdmin');
 		return await this.propertyService.getAllPropertiesByAdmin(input);
 	}
+
 	@Roles(MemberType.ADMIN)
 	@UseGuards(RolesGuard)
 	@Mutation((returns) => Property)

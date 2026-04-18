@@ -134,7 +134,7 @@ export class PropertyService {
 							{ $limit: input.limit },
 							// meLiked
 							lookupMember,
-							{ $unwind: '$memberData' },
+							{ $unwind: '$memberData' }, //[memberData] => memberData
 						],
 						metaCounter: [{ $count: 'total' }],
 					},
