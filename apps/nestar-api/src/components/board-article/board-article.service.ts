@@ -10,6 +10,7 @@ import { ViewGroup } from '../../libs/enums/view.enum';
 import { BoardArticleStatus } from '../../libs/enums/board-article.enum';
 import { StatisticModifier, T } from '../../libs/types/common';
 import { exec } from 'child_process';
+import { BoardArticleUpdate } from '../../libs/dto/board-article/board-article.update';
 
 @Injectable()
 export class BoardArticleService {
@@ -72,20 +73,34 @@ export class BoardArticleService {
 
 		return targetBoardArticle;
 	}
+
+	public async updateBoardArticle(memberId: ObjectId, input: BoardArticleUpdate): Promise<BoardArticle> {
+		const { _id, articleStatus } = input;
+
+		const result = await this.boardArticleModel
+			.findOneAndUpdate({ _id: _id, memberId: memberId, articleStatus: BoardArticleStatus.ACTIVE }, input, {
+				new: true,
+			})
+			.exec();
+
+		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+
+		if (articleStatus === BoardArticleStatus.DELETE) {
+			await this.memberService.memberStatsEditor({
+				_id: memberId,
+				targetKey: 'memberArticles',
+				modifier: -1,
+			});
+		}
+
+		return result;
+	}
+
 	public async boardArticleStatsEditor(input: StatisticModifier): Promise<BoardArticle> {
 		const { _id, targetKey, modifier } = input;
 
-		return;
-		await this.boardArticleModel
-			.findByIdAndUpdate(
-				_id,
-				{
-					$inc: {
-						[targetKey]: modifier,
-					},
-				},
-				{ new: true },
-			)
+		return await this.boardArticleModel
+			.findByIdAndUpdate(_id, { $inc: { [targetKey]: modifier } }, { new: true })
 			.exec();
 	}
 }

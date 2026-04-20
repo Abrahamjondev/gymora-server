@@ -7,7 +7,8 @@ import { type ObjectId } from 'mongoose';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import { BoardArticleInput } from '../../libs/dto/board-article/board-article.input';
 import { WithoutGuard } from '../auth/guards/without.guard';
-import { shapeIntoMongoObjectid } from '../../libs/config';
+import { shapeIntoMongoObjectId } from '../../libs/config';
+import { BoardArticleUpdate } from '../../libs/dto/board-article/board-article.update';
 
 @Resolver()
 export class BoardArticleResolver {
@@ -31,8 +32,21 @@ export class BoardArticleResolver {
 		@AuthMember('_id') memberId: ObjectId,
 	): Promise<BoardArticle> {
 		console.log('Query: getBoardArticle');
-		const articleId = shapeIntoMongoObjectid(input);
+		const articleId = shapeIntoMongoObjectId(input);
 
 		return await this.boardArticleService.getBoardArticle(memberId, articleId);
+	}
+
+	@UseGuards(AuthGuard)
+	@Mutation(() => BoardArticle)
+	public async updateBoardArticle(
+		@Args('input') input: BoardArticleUpdate,
+		@AuthMember('_id') memberId: ObjectId,
+	): Promise<BoardArticle> {
+		console.log('Mutation: updateBoardArticle');
+
+		input._id = shapeIntoMongoObjectId(input._id);
+
+		return await this.boardArticleService.updateBoardArticle(memberId, input);
 	}
 }

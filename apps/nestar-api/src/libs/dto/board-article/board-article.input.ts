@@ -25,6 +25,7 @@ export class BoardArticleInput {
 	articleImage?: string;
 
 	memberId?: ObjectId;
+	private _id: any;
 }
 
 @InputType()

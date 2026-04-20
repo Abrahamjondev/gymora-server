@@ -17,7 +17,7 @@ import { ViewGroup } from '../../libs/enums/view.enum';
 import moment from 'moment';
 import { PropertyUpdate } from '../../libs/dto/property/property.update';
 import { lookupMember } from '../../libs/config';
-import { shapeIntoMongoObjectid } from '../../libs/config';
+import { shapeIntoMongoObjectId } from '../../libs/config';
 
 @Injectable()
 export class PropertyService {
@@ -163,7 +163,7 @@ export class PropertyService {
 		} = input.search;
 
 		if (memberId) {
-			match.memberId = shapeIntoMongoObjectid(memberId);
+			match.memberId = shapeIntoMongoObjectId(memberId);
 		}
 
 		if (locationList) {
