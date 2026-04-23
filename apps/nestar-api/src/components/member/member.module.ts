@@ -7,6 +7,7 @@ import MemberSchema from '../../schemas/Member.model';
 import { AuthModule } from '../auth/auth.module';
 import { ViewModule } from '../view/view.module';
 import { LikeModule } from '../like/like.module';
+import FollowSchema from '../../schemas/Follow.model';
 
 @Module({
 	imports: [
@@ -14,6 +15,12 @@ import { LikeModule } from '../like/like.module';
 			{
 				name: 'Member',
 				schema: MemberSchema,
+			},
+		]),
+		MongooseModule.forFeature([
+			{
+				name: 'Follow',
+				schema: FollowSchema,
 			},
 		]),
 		AuthModule,
