@@ -8,7 +8,7 @@ import { AuthMember } from '../auth/decorators/authMember.decorator';
 import { CommentUpdate } from '../../libs/dto/comment/comment.update';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { WithoutGuard } from '../auth/guards/without.guard';
-import { Comment, Comments } from '../../libs/dto/comment/comment';
+import { Comment as CommentDto, Comments } from '../../libs/dto/comment/comment';
 import { MemberType } from '../../libs/enums/member.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -18,7 +18,7 @@ export class CommentResolver {
 	constructor(private readonly commentService: CommentService) {}
 
 	@UseGuards(AuthGuard)
-	@Mutation((returns) => Comment)
+	@Mutation((returns) => CommentDto)
 	public async createComment(
 		@Args('input') input: CommentInput,
 		@AuthMember('_id') memberId: ObjectId,
@@ -28,7 +28,7 @@ export class CommentResolver {
 	}
 
 	@UseGuards(AuthGuard)
-	@Mutation((returns) => Comment)
+	@Mutation((returns) => CommentDto)
 	public async updateComment(
 		@Args('input') input: CommentUpdate,
 		@AuthMember('_id') memberId: ObjectId,
@@ -53,7 +53,7 @@ export class CommentResolver {
 	/** ADMIN **/
 	@Roles(MemberType.ADMIN)
 	@UseGuards(RolesGuard)
-	@Mutation((returns) => Comment)
+	@Mutation((returns) => CommentDto)
 	public async removeCommentByAdmin(@Args('commentId') input: string): Promise<Comment> {
 		console.log('Mutation: removeCommentByAdmin');
 		const commentId = shapeIntoMongoObjectId(input);
