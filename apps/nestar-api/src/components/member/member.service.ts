@@ -15,6 +15,7 @@ import { LikeInput } from '../../libs/dto/like/like.input';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { LikeService } from '../like/like.service';
 import { Follower, Following, MeFollowed } from '../../libs/dto/follow/follow';
+import { lookupAuthMemberLiked } from '../../libs/config';
 
 @Injectable()
 export class MemberService {
@@ -122,10 +123,14 @@ export class MemberService {
 					// FACET bu MongoDB aggregate ning pipeline bosqichi (stage).
 					// U bir xil ma'lumotga bir vaqtda bir nechta amal qilish imkonini beradi.
 					$facet: {
-						list: [{ $skip: (input.page - 1) * input.limit }, { $limit: input.limit }],
+						list: [{ $skip: (input.page - 1) * input.limit },
+							 { $limit: input.limit },
+							lookupAuthMemberLiked(memberId),
+						],
 						metaCounter: [{ $count: 'total' }],
 					},
 				},
+			
 			])
 			.exec();
 		if (!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);

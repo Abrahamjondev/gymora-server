@@ -4,7 +4,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Follower, Followers, Following, Followings } from '../../libs/dto/follow/follow';
 import { Model, ObjectId } from 'mongoose';
 import { Direction, Message } from '../../libs/enums/common.enum';
-import { lookupFollowerData, lookupFollowingData } from '../../libs/config';
+import {
+	lookupFollowerData,
+	lookupFollowingData,
+	lookupAuthMemberLiked,
+	lookupAuthMemberFollowed,
+} from '../../libs/config';
 import { FollowInquiry } from '../../libs/dto/follow/follow.input';
 import { T } from '../../libs/types/common';
 
@@ -82,6 +87,8 @@ export class FollowService {
 							// meFollowed
 							lookupFollowingData,
 							{ $unwind: '$followingData' },
+							lookupAuthMemberLiked(memberId, '$followingId'),
+							lookupAuthMemberFollowed({ followerId: memberId, followingId: '$followingId' }),
 						],
 						metaCounter: [{ $count: 'total' }],
 					},
@@ -110,9 +117,12 @@ export class FollowService {
 							{ $skip: (page - 1) * limit },
 							{ $limit: limit },
 							// meLiked
+
 							// meFollowed
 							lookupFollowerData,
 							{ $unwind: '$followerData' },
+							lookupAuthMemberLiked(memberId, '$followerId'),
+							lookupAuthMemberFollowed({ followerId: memberId, followingId: '$followerId' }),
 						],
 						metaCounter: [{ $count: 'total' }],
 					},
