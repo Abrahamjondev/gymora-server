@@ -9,6 +9,7 @@ import { ComponentsModule } from './components/components.module';
 import { DatabaseModule } from './database/database.module';
 import { T } from './libs/types/common';
 import { SocketModule } from './socket/socket.module';
+import { NestarBatchController } from './nestar-batch/nestar-batch.controller';
 
 @Module({
 	imports: [
@@ -32,7 +33,7 @@ import { SocketModule } from './socket/socket.module';
 		DatabaseModule,
 		SocketModule,
 	],
-	controllers: [AppController],
+	controllers: [AppController, NestarBatchController],
 	providers: [AppService, AppResolver],
 })
 export class AppModule {}
