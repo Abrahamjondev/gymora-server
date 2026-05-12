@@ -13,12 +13,12 @@ export class SocketGateway implements OnGatewayInit {
 
 	handleConnection(client: WebSocket, ...args: any[]) {
 		this.summaryClient++;
-		this.logger.log(`== Client connected total: ${this.summaryClient} ==`);
+		this.logger.verbose(`== Client connected total: ${this.summaryClient} ==`);
 	}
 
 	handleDisconnect(client: WebSocket) {
 		this.summaryClient--;
-		this.logger.log(`== Client disconnected left total: ${this.summaryClient} ==`);
+		this.logger.warn(`== Client disconnected left total: ${this.summaryClient} ==`);
 	}
 
 	@SubscribeMessage('message')
