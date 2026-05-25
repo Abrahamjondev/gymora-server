@@ -17,7 +17,9 @@ export class CourseService {
 
 	public async createCourse(memberId: string, input: CourseInput): Promise<Course> {
 		await this.assertTrainerOwner(memberId, input.trainerId);
-		return await this.courseModel.create(input);
+		const result = await this.courseModel.create(input);
+		await this.memberModel.findByIdAndUpdate(memberId, { $inc: { memberCourses: 1 } }).exec();
+		return result;
 	}
 
 	public async getCourse(courseId: string): Promise<Course> {

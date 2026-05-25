@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { MemberService } from '../member/member.service';
+import { NotificationService } from '../notification/notification.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Follower, Followers, Following, Followings } from '../../libs/dto/follow/follow';
 import { Model, ObjectId } from 'mongoose';
@@ -12,14 +13,14 @@ import {
 } from '../../libs/config';
 import { FollowInquiry } from '../../libs/dto/follow/follow.input';
 import { T } from '../../libs/types/common';
+import { NotificationType } from '../../libs/enums/gymora.enum';
 
 @Injectable()
 export class FollowService {
 	constructor(
 		@InjectModel('Follow') private readonly followModel: Model<Follower | Following>,
 		private readonly memberService: MemberService,
-		// private readonly viewService: ViewService,
-		// private likeService: LikeService,
+		private readonly notificationService: NotificationService,
 	) {}
 
 	public async subscribe(followerId: ObjectId, followingId: ObjectId): Promise<Follower> {
@@ -35,6 +36,13 @@ export class FollowService {
 
 		await this.memberService.memberStatsEditor({ _id: followerId, targetKey: 'memberFollowings', modifier: 1 });
 		await this.memberService.memberStatsEditor({ _id: followingId, targetKey: 'memberFollowers', modifier: 1 });
+
+		this.notificationService.createNotification({
+			memberId: followingId.toString(),
+			notificationType: NotificationType.SYSTEM,
+			notificationTitle: 'New Follower',
+			notificationMessage: 'Someone started following you!',
+		}).catch(() => {});
 
 		return result;
 	}

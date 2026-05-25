@@ -9,7 +9,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { ObjectId } from 'mongoose';
-import { MemberUpdate } from '../../libs/dto/member/member.update';
+import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
 import { getSerialForImage, shapeIntoMongoObjectId, validMimeTypes } from '../../libs/config';
 import { WithoutGuard } from '../auth/guards/without.guard';
 import { GraphQLUpload, FileUpload } from 'graphql-upload';
@@ -99,7 +99,7 @@ export class MemberResolver {
 	@Roles(MemberType.ADMIN)
 	@UseGuards(RolesGuard)
 	@Mutation(() => Member)
-	public async updateMemberByAdmin(@Args('input') input: MemberUpdate): Promise<Member> {
+	public async updateMemberByAdmin(@Args('input') input: MemberUpdateByAdmin): Promise<Member> {
 		console.log('Mutation updateMemberByAdmin ');
 		return await this.memberService.updateMemberByAdmin(input);
 	}

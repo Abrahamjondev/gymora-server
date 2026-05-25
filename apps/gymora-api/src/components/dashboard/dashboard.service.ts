@@ -22,14 +22,14 @@ export class DashboardService {
 			this.subscriptionService.getMemberSubscriptions(memberId),
 		]);
 		const totalCalories = nutrition.reduce((sum, item) => sum + (item.totalCalories ?? 0), 0);
-		const latestSubscription = subscriptions[0];
+		const activeSubscription = subscriptions.find((s) => s.subscriptionStatus === 'ACTIVE') ?? subscriptions[0];
 		return {
 			memberId,
 			totalCalories,
 			workoutCount: workouts.length,
 			progressEntries: progresses.length,
-			subscriptionSummary: latestSubscription
-				? `${latestSubscription.subscriptionPlan}:${latestSubscription.subscriptionStatus}`
+			subscriptionSummary: activeSubscription
+				? `${activeSubscription.subscriptionPlan}:${activeSubscription.subscriptionStatus}`
 				: 'NO_SUBSCRIPTION',
 		};
 	}

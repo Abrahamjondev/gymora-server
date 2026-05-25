@@ -1,6 +1,7 @@
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 import { type ObjectId } from 'mongoose';
 import { TrainerVerificationStatus } from '../../enums/gymora.enum';
+import { MeLiked } from '../like/like';
 
 @ObjectType()
 export class Trainer {
@@ -20,6 +21,8 @@ export class Trainer {
 	trainerSocialLinks: string[];
 	@Field(() => TrainerVerificationStatus)
 	trainerVerificationStatus: TrainerVerificationStatus;
+	@Field(() => [MeLiked], { nullable: true })
+	meLiked?: MeLiked[];
 	@Field(() => Date)
 	createdAt: Date;
 	@Field(() => Date)

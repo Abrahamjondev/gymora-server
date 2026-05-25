@@ -16,13 +16,12 @@ export class WithoutGuard implements CanActivate {
 				try {
 					const token = bearerToken.split(' ')[1],
 						authMember = await this.authService.verifyToken(token);
-					request.body.authMember = authMember;
+					request.authMember = authMember;
 				} catch (err) {
-					request.body.authMember = null;
+					request.authMember = null;
 				}
-			} else request.body.authMember = null;
+			} else request.authMember = null;
 
-			console.log('memberNick[without] =>', request.body.authMember?.memberNick ?? 'none');
 			return true;
 		}
 

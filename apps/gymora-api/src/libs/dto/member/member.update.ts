@@ -10,14 +10,6 @@ export class MemberUpdate {
 	_id: ObjectId;
 
 	@IsOptional()
-	@Field(() => MemberType, { nullable: true })
-	memberType?: MemberType;
-
-	@IsOptional()
-	@Field(() => MemberStatus, { nullable: true })
-	memberStatus?: MemberStatus;
-
-	@IsOptional()
 	@Field(() => String, { nullable: true })
 	memberPhone?: string;
 
@@ -48,5 +40,48 @@ export class MemberUpdate {
 	@Field(() => String, { nullable: true })
 	memberDesc?: string;
 
-	delatedAt?: Date;
+	deletedAt?: Date;
+}
+
+@InputType()
+export class MemberUpdateByAdmin {
+	@IsNotEmpty()
+	@Field(() => String)
+	_id: ObjectId;
+
+	@IsOptional()
+	@Field(() => MemberType, { nullable: true })
+	memberType?: MemberType;
+
+	@IsOptional()
+	@Field(() => MemberStatus, { nullable: true })
+	memberStatus?: MemberStatus;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberPhone?: string;
+
+	@IsOptional()
+	@Length(3, 12)
+	@Field(() => String, { nullable: true })
+	memberNick?: string;
+
+	@IsOptional()
+	@Length(3, 100)
+	@Field(() => String, { nullable: true })
+	memberFullName?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberImage?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberAddress?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberDesc?: string;
+
+	deletedAt?: Date;
 }

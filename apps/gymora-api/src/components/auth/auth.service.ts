@@ -18,14 +18,12 @@ export class AuthService {
 		return await bcrypt.compare(passwords, hashedPassword);
 	}
 	public async createToken(member: Member): Promise<string> {
-		console.log('Member:', member);
-
+		const source = member['_doc'] ? member['_doc'] : member;
 		const payload: T = {};
-		Object.keys(member['_doc'] ? member['_doc'] : member).map((ele) => {
-			payload[`${ele}`] = member[`${ele}`];
+		Object.keys(source).forEach((ele) => {
+			payload[ele] = source[ele];
 		});
 		delete payload.memberPassword;
-		console.log('Payload:', payload);
 
 		return await this.jwtService.signAsync(payload);
 	}

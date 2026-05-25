@@ -1,6 +1,7 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { type ObjectId } from 'mongoose';
 import { WorkoutDifficulty } from '../../enums/gymora.enum';
+import { MeLiked } from '../like/like';
 
 @ObjectType()
 export class WorkoutExercise {
@@ -32,6 +33,8 @@ export class Workout {
 	estimatedCaloriesBurned: number;
 	@Field(() => [WorkoutExercise])
 	exercises: WorkoutExercise[];
+	@Field(() => [MeLiked], { nullable: true })
+	meLiked?: MeLiked[];
 	@Field(() => Date)
 	createdAt: Date;
 	@Field(() => Date)

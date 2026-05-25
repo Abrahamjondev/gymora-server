@@ -4,6 +4,7 @@ import { Workout } from '../../libs/dto/workout/workout';
 import { WorkoutInput } from '../../libs/dto/workout/workout.input';
 import { WorkoutService } from './workout.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { WithoutGuard } from '../auth/guards/without.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import type { ObjectId } from 'mongoose';
 
@@ -17,9 +18,15 @@ export class WorkoutResolver {
 		return await this.workoutService.createWorkout({ ...input, memberId: memberId.toString() });
 	}
 
+	@UseGuards(WithoutGuard)
 	@Query(() => Workout)
-	public async getWorkout(@Args('workoutId') workoutId: string): Promise<Workout> {
-		return await this.workoutService.getWorkout(workoutId);
+	public async getWorkout(@Args('workoutId') workoutId: string, @AuthMember('_id') memberId: ObjectId): Promise<Workout> {
+		return await this.workoutService.getWorkout(memberId, workoutId);
+	}
+
+	@Query(() => [Workout])
+	public async getWorkouts(): Promise<Workout[]> {
+		return await this.workoutService.getWorkouts();
 	}
 
 	@UseGuards(AuthGuard)

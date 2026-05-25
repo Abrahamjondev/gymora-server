@@ -4,13 +4,16 @@ export const AuthMember = createParamDecorator((data: string, context: Execution
 	let request: any;
 	if (context.contextType === 'graphql') {
 		request = context.getArgByIndex(2).req;
-		if (request.body.authMember) {
-			request.body.authMember.authorization = request.headers?.authorization;
-		}
-	} else request = context.switchToHttp().getRequest();
+	} else {
+		request = context.switchToHttp().getRequest();
+	}
 
-	const member = request.body.authMember;
+	const member = request.authMember;
+	if (!member) return null;
 
-	if (member) return data ? member?.[data] : member;
-	else return null;
+	if (request.headers?.authorization) {
+		member.authorization = request.headers.authorization;
+	}
+
+	return data ? member?.[data] : member;
 });

@@ -4,6 +4,7 @@ import { TrainerService } from './trainer.service';
 import { Trainer } from '../../libs/dto/trainer/trainer';
 import { TrainerInput, TrainerUpdate } from '../../libs/dto/trainer/trainer.input';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { WithoutGuard } from '../auth/guards/without.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import type { ObjectId } from 'mongoose';
 
@@ -17,9 +18,10 @@ export class TrainerResolver {
 		return await this.trainerService.createTrainer({ ...input, memberId: memberId.toString() });
 	}
 
+	@UseGuards(WithoutGuard)
 	@Query(() => Trainer)
-	public async getTrainer(@Args('trainerId') trainerId: string): Promise<Trainer> {
-		return await this.trainerService.getTrainer(trainerId);
+	public async getTrainer(@Args('trainerId') trainerId: string, @AuthMember('_id') memberId: ObjectId): Promise<Trainer> {
+		return await this.trainerService.getTrainer(memberId, trainerId);
 	}
 
 	@Query(() => [Trainer])

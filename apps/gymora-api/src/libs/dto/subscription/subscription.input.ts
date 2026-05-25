@@ -11,12 +11,6 @@ export class SubscriptionInput {
 	@Field(() => SubscriptionPlan)
 	subscriptionPlan: SubscriptionPlan;
 	@IsNotEmpty()
-	@Field(() => Date)
-	startedAt: Date;
-	@IsNotEmpty()
-	@Field(() => Date)
-	expiresAt: Date;
-	@IsNotEmpty()
 	@Min(0)
 	@Field(() => Float)
 	price: number;

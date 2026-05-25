@@ -6,7 +6,7 @@ import { LoginInput, MemberInput, MembersInquiry, TrainersInquiry } from '../../
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
-import { MemberUpdate } from '../../libs/dto/member/member.update';
+import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
 import { ViewService } from '../view/view.service';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { ViewInput } from '../../libs/dto/view/view.input';
@@ -30,7 +30,11 @@ export class MemberService {
 	public async signup(input: MemberInput): Promise<Member> {
 		input.memberPassword = await this.authService.hashPassword(input.memberPassword);
 		try {
-			const result = await this.memberModel.create(input);
+			const result = await this.memberModel.create({
+				...input,
+				memberType: MemberType.USER,
+				memberStatus: MemberStatus.ACTIVE,
+			});
 			result.accessToken = await this.authService.createToken(result);
 
 			return result;
@@ -81,7 +85,7 @@ export class MemberService {
 			const newView = await this.viewService.recordView(viewInput);
 			//increase view
 			if (newView) {
-				await this.memberModel.findByIdAndUpdate(search, { $inc: { memberViews: 1 } }, { new: true }).exec();
+				await this.memberModel.findOneAndUpdate({ _id: targetId }, { $inc: { memberViews: 1 } }, { new: true }).exec();
 				targetMember.memberViews++;
 			}
 			//meliked
@@ -108,7 +112,7 @@ export class MemberService {
 		//inputtan kelayotgan direction boyicha saralymiz
 		//agar berilmagan bolsa ozimiz belgilagan boyicha descending boyicha saralaymiz
 
-		if (text) match.memberNick = { $regex: new RegExp(text, 'i') };
+		if (text) match.$or = [{ memberNick: { $regex: new RegExp(text, 'i') } }, { memberFullName: { $regex: new RegExp(text, 'i') } }];
 		console.log('match', match);
 
 		const result = await this.memberModel
@@ -185,8 +189,8 @@ export class MemberService {
 		return result[0];
 	}
 
-	public async updateMemberByAdmin(input: MemberUpdate): Promise<Member> {
-		const result = await this.memberModel.findByIdAndUpdate({ _id: input._id }, input, { new: true }).exec();
+	public async updateMemberByAdmin(input: MemberUpdateByAdmin): Promise<Member> {
+		const result = await this.memberModel.findByIdAndUpdate(input._id, input, { new: true }).exec();
 		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
 
 		return result;
