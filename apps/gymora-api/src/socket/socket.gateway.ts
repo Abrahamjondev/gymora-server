@@ -1,5 +1,14 @@
 import { Logger, UnauthorizedException } from '@nestjs/common';
-import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage, WebSocketGateway, WsException } from '@nestjs/websockets';
+import {
+	ConnectedSocket,
+	MessageBody,
+	OnGatewayConnection,
+	OnGatewayDisconnect,
+	OnGatewayInit,
+	SubscribeMessage,
+	WebSocketGateway,
+	WsException,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatInput } from '../libs/dto/chat/chat.input';
 import { ChatService } from '../components/chat/chat.service';
@@ -44,7 +53,7 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 			this.chatService.registerConnection(memberId, client.id);
 			this.logger.verbose(`== Client connected member: ${memberId} total: ${this.summaryClient} ==`);
 		} catch (err) {
-			this.logger.warn(`Unauthorized socket connection rejected: ${err?.message ?? Message.NOT_AUTHENTICATED}`);
+			this.logger.warn(`Unauthorized socket connection rejected: ${err instanceof Error ? err.message : Message.NOT_AUTHENTICATED}`);
 			client.emit('exception', new UnauthorizedException(Message.NOT_AUTHENTICATED).getResponse());
 			client.disconnect(true);
 			throw new WsException(Message.NOT_AUTHENTICATED);
@@ -59,10 +68,7 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 	}
 
 	@SubscribeMessage('chat:message')
-	public async handleChatMessage(
-		@ConnectedSocket() client: AuthenticatedSocket,
-		@MessageBody() payload: ChatInput,
-	) {
+	public async handleChatMessage(@ConnectedSocket() client: AuthenticatedSocket, @MessageBody() payload: ChatInput) {
 		const senderId = this.getAuthenticatedMemberId(client);
 		return await this.chatService.sendMessage({
 			...payload,

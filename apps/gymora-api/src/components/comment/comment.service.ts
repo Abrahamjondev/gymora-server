@@ -6,18 +6,18 @@ import { CommentInput, CommentsInquiry } from '../../libs/dto/comment/comment.in
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { CommentGroup, CommentStatus } from '../../libs/enums/comment.enum';
 import { CommentUpdate } from '../../libs/dto/comment/comment.update';
-import { Comments } from '../../libs/dto/comment/comment';
+import { Comment as CommentDto, Comments } from '../../libs/dto/comment/comment';
 import { lookupMember } from '../../libs/config';
 import { T } from '../../libs/types/common';
 
 @Injectable()
 export class CommentService {
 	constructor(
-		@InjectModel('Comment') private readonly commentModel: Model<Comment>,
+		@InjectModel('Comment') private readonly commentModel: Model<CommentDto>,
 		private readonly memberService: MemberService,
 	) {}
 
-	public async createComment(memberId: ObjectId, input: CommentInput): Promise<Comment> {
+	public async createComment(memberId: ObjectId, input: CommentInput): Promise<CommentDto> {
 		input.memberId = memberId;
 
 		let result = null;
@@ -50,7 +50,7 @@ export class CommentService {
 
 		return result;
 	}
-	public async updateComment(memberId: ObjectId, input: CommentUpdate): Promise<Comment> {
+	public async updateComment(memberId: ObjectId, input: CommentUpdate): Promise<CommentDto> {
 		const { _id } = input;
 
 		const result = await this.commentModel.findOneAndUpdate(
@@ -71,7 +71,7 @@ export class CommentService {
 
 		return result;
 	}
-	public async getComments(memberId: ObjectId, input: CommentsInquiry): Promise<Comments> {
+	public async getComments(_memberId: ObjectId, input: CommentsInquiry): Promise<Comments> {
 		const { commentRefId } = input.search;
 
 		const match: T = {
@@ -106,7 +106,7 @@ export class CommentService {
 
 		return result[0];
 	}
-	public async removeCommentByAdmin(input: ObjectId): Promise<Comment> {
+	public async removeCommentByAdmin(input: ObjectId): Promise<CommentDto> {
 		const result = await this.commentModel.findByIdAndUpdate(input, { commentStatus: CommentStatus.DELETE }, { new: true });
 
 		if (!result) {

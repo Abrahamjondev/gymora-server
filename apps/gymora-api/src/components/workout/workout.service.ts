@@ -31,10 +31,7 @@ export class WorkoutService {
 
 		if (memberId) {
 			const viewInput = { memberId, viewRefId: result._id, viewGroup: ViewGroup.WORKOUT };
-			const newView = await this.viewService.recordView(viewInput);
-			if (newView) {
-				await this.workoutModel.findByIdAndUpdate(workoutId, { $inc: { memberViews: 1 } }).exec();
-			}
+			await this.viewService.recordView(viewInput);
 			const likeInput = { memberId, likeRefId: result._id, likeGroup: LikeGroup.WORKOUT };
 			result.meLiked = await this.likeService.checkLikeExistence(likeInput);
 		}

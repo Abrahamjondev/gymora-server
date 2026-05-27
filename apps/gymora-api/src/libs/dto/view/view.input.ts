@@ -15,5 +15,5 @@ export class ViewInput {
 
 	@IsNotEmpty()
 	@Field(() => ViewGroup)
-	viewGroup: string;
+	viewGroup: ViewGroup;
 }

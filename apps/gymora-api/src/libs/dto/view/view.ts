@@ -4,9 +4,6 @@ import { ViewGroup } from '../../enums/view.enum';
 
 @ObjectType()
 export class View {
-	recordView() {
-		throw new Error('Method not implemented.');
-	}
 	@Field(() => String)
 	_id: ObjectId;
 

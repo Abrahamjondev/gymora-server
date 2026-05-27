@@ -4,6 +4,7 @@ import { NutritionService } from '../nutrition/nutrition.service';
 import { ProgressService } from '../progress/progress.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { WorkoutService } from '../workout/workout.service';
+import { SubscriptionStatus } from '../../libs/enums/gymora.enum';
 
 @Injectable()
 export class DashboardService {
@@ -22,7 +23,7 @@ export class DashboardService {
 			this.subscriptionService.getMemberSubscriptions(memberId),
 		]);
 		const totalCalories = nutrition.reduce((sum, item) => sum + (item.totalCalories ?? 0), 0);
-		const activeSubscription = subscriptions.find((s) => s.subscriptionStatus === 'ACTIVE') ?? subscriptions[0];
+		const activeSubscription = subscriptions.find((s) => s.subscriptionStatus === SubscriptionStatus.ACTIVE) ?? subscriptions[0];
 		return {
 			memberId,
 			totalCalories,
