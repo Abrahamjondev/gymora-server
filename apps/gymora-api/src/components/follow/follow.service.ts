@@ -32,17 +32,22 @@ export class FollowService {
 		const targetMember = await this.memberService.getMember(null, followingId);
 		if (!targetMember) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
 
+		const alreadyFollowing = await this.followModel.findOne({ followerId, followingId }).exec();
+		if (alreadyFollowing) throw new BadRequestException(Message.CREATE_FAILED);
+
 		const result = await this.registerSubscription(followerId, followingId);
 
 		await this.memberService.memberStatsEditor({ _id: followerId, targetKey: 'memberFollowings', modifier: 1 });
 		await this.memberService.memberStatsEditor({ _id: followingId, targetKey: 'memberFollowers', modifier: 1 });
 
-		this.notificationService.createNotification({
-			memberId: followingId.toString(),
-			notificationType: NotificationType.SYSTEM,
-			notificationTitle: 'New Follower',
-			notificationMessage: 'Someone started following you!',
-		}).catch(() => {});
+		this.notificationService
+			.createNotification({
+				memberId: followingId.toString(),
+				notificationType: NotificationType.SYSTEM,
+				notificationTitle: 'New Follower',
+				notificationMessage: 'Someone started following you!',
+			})
+			.catch((err) => console.error('Follow notification failed:', err?.message));
 
 		return result;
 	}

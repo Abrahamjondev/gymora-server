@@ -7,12 +7,12 @@ import { Direction } from '../../enums/common.enum';
 @InputType()
 export class MemberInput {
 	@IsNotEmpty()
-	@Length(3, 12)
+	@Length(3, 20)
 	@Field(() => String)
 	memberNick: string;
 
 	@IsNotEmpty()
-	@Length(5, 12)
+	@Length(5, 20)
 	@Field(() => String)
 	memberPassword: string;
 
@@ -28,12 +28,12 @@ export class MemberInput {
 @InputType()
 export class LoginInput {
 	@IsNotEmpty()
-	@Length(3, 12)
+	@Length(3, 20)
 	@Field(() => String)
 	memberNick: string;
 
 	@IsNotEmpty()
-	@Length(5, 12)
+	@Length(5, 20)
 	@Field(() => String)
 	memberPassword: string;
 }

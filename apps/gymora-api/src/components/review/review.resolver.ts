@@ -13,12 +13,25 @@ export class ReviewResolver {
 
 	@UseGuards(AuthGuard)
 	@Mutation(() => Review)
-	public async createReview(@Args('input') input: ReviewInput, @AuthMember('_id') memberId: ObjectId): Promise<Review> {
+	public async createReview(
+		@Args('input') input: ReviewInput,
+		@AuthMember('_id') memberId: ObjectId,
+	): Promise<Review> {
 		return await this.reviewService.createReview({ ...input, memberId: memberId.toString() });
 	}
 
 	@Query(() => [Review])
 	public async getTrainerReviews(@Args('trainerId') trainerId: string): Promise<Review[]> {
 		return await this.reviewService.getTrainerReviews(trainerId);
+	}
+
+	@Query(() => [Review])
+	public async getCourseReviews(@Args('courseId') courseId: string): Promise<Review[]> {
+		return await this.reviewService.getCourseReviews(courseId);
+	}
+
+	@Query(() => [Review])
+	public async getWorkoutReviews(@Args('workoutId') workoutId: string): Promise<Review[]> {
+		return await this.reviewService.getWorkoutReviews(workoutId);
 	}
 }

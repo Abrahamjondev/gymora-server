@@ -1,8 +1,8 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { TrainerService } from './trainer.service';
-import { Trainer } from '../../libs/dto/trainer/trainer';
-import { TrainerInput, TrainerUpdate } from '../../libs/dto/trainer/trainer.input';
+import { Trainer, Trainers } from '../../libs/dto/trainer/trainer';
+import { TrainerInput, TrainerUpdate, TrainersListInquiry } from '../../libs/dto/trainer/trainer.input';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { WithoutGuard } from '../auth/guards/without.guard';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
@@ -24,9 +24,15 @@ export class TrainerResolver {
 		return await this.trainerService.getTrainer(memberId, trainerId);
 	}
 
-	@Query(() => [Trainer])
-	public async getTrainers(): Promise<Trainer[]> {
-		return await this.trainerService.getTrainers();
+	@UseGuards(WithoutGuard)
+	@Query(() => Trainers)
+	public async getTrainers(@Args('input') input: TrainersListInquiry): Promise<Trainers> {
+		return await this.trainerService.getTrainers(input);
+	}
+
+	@Query(() => Trainer, { nullable: true })
+	public async getTrainerByMemberId(@Args('memberId') memberId: string): Promise<Trainer | null> {
+		return await this.trainerService.getTrainerByMemberId(memberId);
 	}
 
 	@UseGuards(AuthGuard)

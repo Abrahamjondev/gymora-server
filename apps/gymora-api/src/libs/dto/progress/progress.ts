@@ -23,4 +23,8 @@ export class Progress {
 	progressPhotos: string[];
 	@Field(() => String, { nullable: true })
 	progressNote?: string;
+	@Field(() => Date)
+	createdAt: Date;
+	@Field(() => Date)
+	updatedAt: Date;
 }

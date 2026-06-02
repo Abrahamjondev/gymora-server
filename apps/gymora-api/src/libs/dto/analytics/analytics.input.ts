@@ -18,4 +18,8 @@ export class AnalyticsInput {
 	@IsNotEmpty()
 	@Field(() => String)
 	gender: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	activityLevel: string;
 }

@@ -1,12 +1,56 @@
 import { Field, Float, InputType, Int } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, Length, Min } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsIn, Length, Min } from 'class-validator';
 import { CourseCategory, CourseDifficulty } from '../../enums/gymora.enum';
+import { Direction } from '../../enums/common.enum';
+
+const availableCourseSorts = ['createdAt', 'coursePrice', 'courseRank', 'courseRating'];
+
+@InputType()
+class CourseSearch {
+	@IsOptional()
+	@Field(() => CourseCategory, { nullable: true })
+	courseCategory?: CourseCategory;
+
+	@IsOptional()
+	@Field(() => CourseDifficulty, { nullable: true })
+	courseDifficulty?: CourseDifficulty;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	text?: string;
+}
+
+@InputType()
+export class CoursesInquiry {
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	limit: number;
+
+	@IsOptional()
+	@IsIn(availableCourseSorts)
+	@Field(() => String, { nullable: true })
+	sort?: string;
+
+	@IsOptional()
+	@Field(() => Direction, { nullable: true })
+	direction?: Direction;
+
+	@IsNotEmpty()
+	@Field(() => CourseSearch)
+	search: CourseSearch;
+}
 
 @InputType()
 export class CourseInput {
-	@IsNotEmpty()
-	@Field(() => String)
-	trainerId: string;
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	trainerId?: string;
 	@IsNotEmpty()
 	@Length(3, 100)
 	@Field(() => String)

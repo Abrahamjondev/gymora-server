@@ -50,6 +50,7 @@ const MemberSchema = new Schema(
 			type: Number,
 			default: 0,
 		},
+		memberArticles: { type: Number, default: 0 },
 		memberWorkouts: {
 			type: Number,
 			default: 0,

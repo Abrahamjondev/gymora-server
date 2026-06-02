@@ -7,6 +7,7 @@ import {
 	OnGatewayInit,
 	SubscribeMessage,
 	WebSocketGateway,
+	WebSocketServer,
 	WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
@@ -23,11 +24,20 @@ type AuthenticatedSocket = Socket & {
 	};
 };
 
+const allowedWsOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
+	.split(',')
+	.map((o) => o.trim())
+	.filter(Boolean);
+
 @WebSocketGateway({
 	transports: ['websocket'],
-	cors: { origin: true, credentials: true },
+	cors: {
+		origin: process.env.NODE_ENV === 'production' ? allowedWsOrigins : true,
+		credentials: true,
+	},
 })
 export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+	@WebSocketServer() private server: Server;
 	private logger: Logger = new Logger('SocketEventsGateway');
 	private summaryClient: number = 0;
 
@@ -49,8 +59,8 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 			client.data.authMember = authMember;
 			client.data.memberId = memberId;
 
-			this.summaryClient++;
 			this.chatService.registerConnection(memberId, client.id);
+			this.summaryClient++;
 			this.logger.verbose(`== Client connected member: ${memberId} total: ${this.summaryClient} ==`);
 		} catch (err) {
 			this.logger.warn(`Unauthorized socket connection rejected: ${err instanceof Error ? err.message : Message.NOT_AUTHENTICATED}`);
@@ -70,10 +80,21 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 	@SubscribeMessage('chat:message')
 	public async handleChatMessage(@ConnectedSocket() client: AuthenticatedSocket, @MessageBody() payload: ChatInput) {
 		const senderId = this.getAuthenticatedMemberId(client);
-		return await this.chatService.sendMessage({
-			...payload,
-			senderId,
-		});
+		const message = await this.chatService.sendMessage({ ...payload, senderId });
+
+		// Send to receiver (real-time delivery)
+		const receiverSockets = this.chatService.getConnectionIds(payload.receiverId);
+		for (const socketId of receiverSockets) {
+			this.server.to(socketId).emit('chat:message', message);
+		}
+
+		// Echo back to sender to confirm delivery and update pending state
+		const senderSockets = this.chatService.getConnectionIds(senderId);
+		for (const socketId of senderSockets) {
+			this.server.to(socketId).emit('chat:message', message);
+		}
+
+		return message;
 	}
 
 	@SubscribeMessage('chat:online')

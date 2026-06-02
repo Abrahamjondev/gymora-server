@@ -46,4 +46,8 @@ export class MealLog {
 	mealDate: Date;
 	@Field(() => String, { nullable: true })
 	mealImage?: string;
+	@Field(() => Date)
+	createdAt: Date;
+	@Field(() => Date)
+	updatedAt: Date;
 }

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule } from '@nestjs/config';
 import WorkoutSchema from '../../schemas/Workout.model';
 import MemberSchema from '../../schemas/Member.model';
 import { WorkoutResolver } from './workout.resolver';
@@ -17,6 +18,7 @@ import { LikeModule } from '../like/like.module';
 		AuthModule,
 		ViewModule,
 		LikeModule,
+		ConfigModule,
 	],
 	providers: [WorkoutResolver, WorkoutService],
 	exports: [WorkoutService],

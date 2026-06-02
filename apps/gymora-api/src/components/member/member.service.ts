@@ -60,6 +60,9 @@ export class MemberService {
 		return response;
 	}
 	public async updateMember(memberId: ObjectId, input: MemberUpdate): Promise<Member> {
+		if (input.memberPassword) {
+			input.memberPassword = await this.authService.hashPassword(input.memberPassword);
+		}
 		const result = await this.memberModel
 			.findOneAndUpdate({ _id: memberId, memberStatus: MemberStatus.ACTIVE }, input, { new: true })
 			.exec();
@@ -72,9 +75,7 @@ export class MemberService {
 	public async getMember(memberId: ObjectId, targetId: ObjectId): Promise<Member> {
 		const search: T = {
 			_id: targetId,
-			memberStatus: {
-				$in: [MemberStatus.ACTIVE, MemberStatus.BLOCK],
-			},
+			memberStatus: MemberStatus.ACTIVE,
 		};
 		const targetMember = await this.memberModel.findOne(search).lean().exec();
 		if (!targetMember) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
@@ -139,6 +140,9 @@ export class MemberService {
 	}
 
 	public async likeTargetMember(memberId: ObjectId, likeRefId: ObjectId): Promise<Member> {
+		if (memberId.toString() === likeRefId.toString()) {
+			throw new InternalServerErrorException(Message.SELF_SUBSCRIPTION_DENIED);
+		}
 		const target: Member = await this.memberModel.findOne({ _id: likeRefId, memberStatus: MemberStatus.ACTIVE }).exec();
 
 		if (!target) throw new InternalServerErrorException(Message.NO_DATA_FOUND);

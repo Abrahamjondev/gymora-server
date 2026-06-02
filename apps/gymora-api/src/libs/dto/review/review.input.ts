@@ -12,6 +12,9 @@ export class ReviewInput {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	courseId?: string;
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	workoutId?: string;
 	@IsNotEmpty()
 	@Min(1)
 	@Max(5)

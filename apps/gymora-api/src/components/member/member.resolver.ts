@@ -68,8 +68,11 @@ export class MemberResolver {
 
 	@UseGuards(WithoutGuard)
 	@Query(() => Members)
-	public async getTrainers(@Args('input') input: TrainersInquiry, @AuthMember('_id') memberId: ObjectId): Promise<Members> {
-		console.log('Query getTrainers ');
+	public async getTrainerMembers(
+		@Args('input') input: TrainersInquiry,
+		@AuthMember('_id') memberId: ObjectId,
+	): Promise<Members> {
+		console.log('Query getTrainerMembers ');
 		return await this.memberService.getTrainers(memberId, input);
 	}
 
@@ -113,6 +116,9 @@ export class MemberResolver {
 	): Promise<string> {
 		console.log('Mutation: imageUploader');
 
+		const allowedTargets = ['member', 'members', 'trainer', 'trainers', 'workout', 'workouts', 'course', 'courses', 'article', 'articles', 'nutrition'];
+		if (!allowedTargets.includes(String(target))) throw new Error(Message.UPLOAD_FAILED);
+
 		if (!filename) throw new Error(Message.UPLOAD_FAILED);
 		const validMime = validMimeTypes.includes(mimetype);
 		if (!validMime) throw new Error(Message.PROVIDE_ALLOWED_FORMAT);
@@ -141,6 +147,9 @@ export class MemberResolver {
 		@Args('target') target: String,
 	): Promise<string[]> {
 		console.log('Mutation: imagesUploader');
+
+		const allowedTargets = ['member', 'members', 'trainer', 'trainers', 'workout', 'workouts', 'course', 'courses', 'article', 'articles', 'nutrition'];
+		if (!allowedTargets.includes(String(target))) throw new Error(Message.UPLOAD_FAILED);
 
 		const uploadedImages = [];
 		const promisedList = files.map(async (img: Promise<FileUpload>, index: number): Promise<Promise<void>> => {

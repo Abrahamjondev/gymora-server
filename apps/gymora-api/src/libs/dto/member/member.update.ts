@@ -14,12 +14,12 @@ export class MemberUpdate {
 	memberPhone?: string;
 
 	@IsOptional()
-	@Length(3, 12)
+	@Length(3, 20)
 	@Field(() => String, { nullable: true })
 	memberNick?: string;
 
 	@IsOptional()
-	@Length(5, 12)
+	@Length(5, 20)
 	@Field(() => String, { nullable: true })
 	memberPassword?: string;
 

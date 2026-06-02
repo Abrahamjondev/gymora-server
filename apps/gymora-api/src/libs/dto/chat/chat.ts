@@ -15,12 +15,32 @@ export class Chat {
 	isRead: boolean;
 	@Field(() => Date)
 	createdAt: Date;
+	@Field(() => Date)
+	updatedAt: Date;
 }
 
 @ObjectType()
 export class OnlineStatus {
 	@Field(() => String)
 	memberId: string;
+	@Field(() => Boolean)
+	isOnline: boolean;
+}
+
+@ObjectType()
+export class Conversation {
+	@Field(() => String)
+	partnerId: string;
+	@Field(() => String, { nullable: true })
+	partnerNick?: string;
+	@Field(() => String, { nullable: true })
+	partnerImage?: string;
+	@Field(() => String)
+	lastMessage: string;
+	@Field(() => Date)
+	lastMessageAt: Date;
+	@Field(() => Boolean)
+	isRead: boolean;
 	@Field(() => Boolean)
 	isOnline: boolean;
 }

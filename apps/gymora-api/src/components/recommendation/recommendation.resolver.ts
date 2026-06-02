@@ -17,6 +17,6 @@ export class RecommendationResolver {
 		@Args('input') input: RecommendationInput,
 		@AuthMember('_id') memberId: ObjectId,
 	): Promise<Recommendation[]> {
-		return this.recommendationService.recommend({ ...input, memberId: memberId.toString() });
+		return await this.recommendationService.recommend({ ...input, memberId: memberId.toString() });
 	}
 }

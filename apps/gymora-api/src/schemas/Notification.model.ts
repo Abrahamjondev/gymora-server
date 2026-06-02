@@ -12,4 +12,7 @@ const NotificationSchema = new Schema(
 	{ timestamps: true, collection: 'notifications' },
 );
 
+NotificationSchema.index({ memberId: 1, createdAt: -1 });
+NotificationSchema.index({ memberId: 1, isRead: 1 });
+
 export default NotificationSchema;

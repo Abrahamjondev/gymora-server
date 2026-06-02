@@ -71,6 +71,50 @@ registerEnumType(NotificationType, { name: 'NotificationType' });
 export enum RecommendationTarget {
 	TRAINER = 'TRAINER',
 	WORKOUT = 'WORKOUT',
+	COURSE = 'COURSE',
 	NUTRITION = 'NUTRITION',
 }
 registerEnumType(RecommendationTarget, { name: 'RecommendationTarget' });
+
+export enum Gender {
+	MALE = 'MALE',
+	FEMALE = 'FEMALE',
+}
+registerEnumType(Gender, { name: 'Gender' });
+
+export enum ActivityLevel {
+	SEDENTARY = 'SEDENTARY',
+	LIGHTLY_ACTIVE = 'LIGHTLY_ACTIVE',
+	MODERATELY_ACTIVE = 'MODERATELY_ACTIVE',
+	VERY_ACTIVE = 'VERY_ACTIVE',
+	EXTRA_ACTIVE = 'EXTRA_ACTIVE',
+}
+registerEnumType(ActivityLevel, { name: 'ActivityLevel' });
+
+export enum FitnessGoal {
+	WEIGHT_LOSS = 'WEIGHT_LOSS',
+	MAINTENANCE = 'MAINTENANCE',
+	MUSCLE_GAIN = 'MUSCLE_GAIN',
+}
+registerEnumType(FitnessGoal, { name: 'FitnessGoal' });
+
+export enum PaymentProvider {
+	STRIPE = 'STRIPE',
+	PAYME = 'PAYME',
+}
+registerEnumType(PaymentProvider, { name: 'PaymentProvider' });
+
+export enum BoardArticleCategory {
+	FITNESS_TIPS = 'FITNESS_TIPS',
+	NUTRITION = 'NUTRITION',
+	WORKOUT_GUIDE = 'WORKOUT_GUIDE',
+	CHALLENGE = 'CHALLENGE',
+	SUCCESS_STORY = 'SUCCESS_STORY',
+}
+registerEnumType(BoardArticleCategory, { name: 'BoardArticleCategory' });
+
+export enum BoardArticleStatus {
+	ACTIVE = 'ACTIVE',
+	DELETE = 'DELETE',
+}
+registerEnumType(BoardArticleStatus, { name: 'BoardArticleStatus' });

@@ -13,6 +13,7 @@ export enum CommentGroup {
 	TRAINER = 'TRAINER',
 	COURSE = 'COURSE',
 	WORKOUT = 'WORKOUT',
+	ARTICLE = 'ARTICLE',
 }
 registerEnumType(CommentGroup, {
 	name: 'CommentGroup',

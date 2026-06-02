@@ -41,6 +41,9 @@ export class Member {
 	@Field(() => Int)
 	memberCourses: number;
 
+	@Field(() => Int, { nullable: true })
+	memberArticles?: number;
+
 	@Field(() => Int)
 	memberWorkouts: number;
 

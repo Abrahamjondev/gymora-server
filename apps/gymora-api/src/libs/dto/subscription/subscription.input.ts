@@ -8,6 +8,9 @@ export class SubscriptionInput {
 	@Field(() => String, { nullable: true })
 	memberId?: string;
 	@IsNotEmpty()
+	@Field(() => String)
+	paymentId: string;
+	@IsNotEmpty()
 	@Field(() => SubscriptionPlan)
 	subscriptionPlan: SubscriptionPlan;
 	@IsNotEmpty()

@@ -19,6 +19,8 @@ import { NotificationModule } from './notification/notification.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PaymentModule } from './payment/payment.module';
 import { ChatModule } from './chat/chat.module';
+import { LessonModule } from './lesson/lesson.module';
+import { BoardArticleModule } from './board-article/board-article.module';
 
 @Module({
 	imports: [
@@ -42,6 +44,8 @@ import { ChatModule } from './chat/chat.module';
 		DashboardModule,
 		PaymentModule,
 		ChatModule,
+		LessonModule,
+		BoardArticleModule,
 	],
 })
 export class ComponentsModule {}

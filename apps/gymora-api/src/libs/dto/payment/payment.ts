@@ -1,6 +1,6 @@
 import { Field, Float, ObjectType } from '@nestjs/graphql';
 import { type ObjectId } from 'mongoose';
-import { PaymentStatus } from '../../enums/gymora.enum';
+import { PaymentProvider, PaymentStatus, SubscriptionPlan } from '../../enums/gymora.enum';
 
 @ObjectType()
 export class Payment {
@@ -14,10 +14,28 @@ export class Payment {
 	paymentCurrency: string;
 	@Field(() => PaymentStatus)
 	paymentStatus: PaymentStatus;
-	@Field(() => String)
-	transactionId: string;
-	@Field(() => String)
-	paymentProvider: string;
+	@Field(() => SubscriptionPlan, { nullable: true })
+	subscriptionPlan?: SubscriptionPlan;
+	@Field(() => String, { nullable: true })
+	transactionId?: string;
+	@Field(() => PaymentProvider)
+	paymentProvider: PaymentProvider;
 	@Field(() => String, { nullable: true })
 	paymentNote?: string;
+	@Field(() => Date)
+	createdAt: Date;
+	@Field(() => Date)
+	updatedAt: Date;
+}
+
+@ObjectType()
+export class PaymentInitiateResult {
+	@Field(() => String)
+	paymentId: string;
+	@Field(() => PaymentProvider)
+	provider: PaymentProvider;
+	@Field(() => String, { nullable: true })
+	clientSecret?: string;
+	@Field(() => String, { nullable: true })
+	redirectUrl?: string;
 }

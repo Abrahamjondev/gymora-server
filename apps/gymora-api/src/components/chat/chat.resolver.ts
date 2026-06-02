@@ -1,6 +1,6 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
-import { Chat, OnlineStatus } from '../../libs/dto/chat/chat';
+import { Chat, Conversation, OnlineStatus } from '../../libs/dto/chat/chat';
 import { ChatInput } from '../../libs/dto/chat/chat.input';
 import { ChatService } from './chat.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -20,15 +20,27 @@ export class ChatResolver {
 	@UseGuards(AuthGuard)
 	@Query(() => [Chat])
 	public async getMessageHistory(
-		@Args('trainerMemberId') trainerMemberId: string,
+		@Args('partnerId') partnerId: string,
 		@AuthMember('_id') memberId: ObjectId,
 	): Promise<Chat[]> {
-		return await this.chatService.getMessageHistory(memberId.toString(), trainerMemberId);
+		return await this.chatService.getMessageHistory(memberId.toString(), partnerId);
+	}
+
+	@UseGuards(AuthGuard)
+	@Query(() => [Conversation])
+	public async getConversations(@AuthMember('_id') memberId: ObjectId): Promise<Conversation[]> {
+		return await this.chatService.getConversations(memberId.toString());
 	}
 
 	@UseGuards(AuthGuard)
 	@Query(() => OnlineStatus)
 	public async getOnlineStatus(@AuthMember('_id') memberId: ObjectId): Promise<OnlineStatus> {
 		return this.chatService.getOnlineStatus(memberId.toString());
+	}
+
+	@UseGuards(AuthGuard)
+	@Query(() => OnlineStatus)
+	public async getPartnerOnlineStatus(@Args('partnerId') partnerId: string): Promise<OnlineStatus> {
+		return this.chatService.getPartnerOnlineStatus(partnerId);
 	}
 }

@@ -18,4 +18,6 @@ export class GymoraNotification {
 	isRead: boolean;
 	@Field(() => Date)
 	createdAt: Date;
+	@Field(() => Date)
+	updatedAt: Date;
 }

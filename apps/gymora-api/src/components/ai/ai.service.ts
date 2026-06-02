@@ -5,7 +5,7 @@ import { Model } from 'mongoose';
 import { AIAnalyze } from '../../libs/dto/ai/ai';
 import { Message } from '../../libs/enums/common.enum';
 
-interface GeminiFoodResult {
+interface FoodResult {
 	foodName: string;
 	estimatedCalories: number;
 	protein: number;
@@ -26,50 +26,49 @@ export class AiService {
 		imageBuffer: Buffer,
 		mimetype: string,
 	): Promise<AIAnalyze> {
-		const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-		if (!apiKey) throw new BadRequestException('GEMINI_API_KEY is not configured');
+		const apiKey = this.configService.get<string>('GROQ_API_KEY');
+		if (!apiKey) throw new BadRequestException('GROQ_API_KEY is not configured');
 
-		const model = this.configService.get<string>('GEMINI_MODEL') ?? 'gemini-2.5-flash';
-		const prompt = [
-			'Analyze this food image.',
-			'Return ONLY valid JSON with this exact shape:',
-			'{"foodName":"","estimatedCalories":0,"protein":0,"carbs":0,"fats":0}',
-			'Use grams for protein, carbs, and fats. Do not include markdown or explanations.',
-		].join(' ');
+		// Use groq vision-capable model
+		const model = 'meta-llama/llama-4-scout-17b-16e-instruct';
+		const base64Image = imageBuffer.toString('base64');
+		const dataUrl = `data:${mimetype};base64,${base64Image}`;
 
-		const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+		const prompt =
+			'Analyze this food image. Return ONLY valid JSON (no markdown, no extra text) with this shape: ' +
+			'{"foodName":"","estimatedCalories":0,"protein":0,"carbs":0,"fats":0}. ' +
+			'Use grams for macros. Be specific about the food name.';
+
+		const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'x-goog-api-key': apiKey,
+				Authorization: `Bearer ${apiKey}`,
 			},
 			body: JSON.stringify({
-				contents: [
+				model,
+				messages: [
 					{
-						parts: [
-							{
-								inline_data: {
-									mime_type: mimetype,
-									data: imageBuffer.toString('base64'),
-								},
-							},
-							{ text: prompt },
+						role: 'user',
+						content: [
+							{ type: 'image_url', image_url: { url: dataUrl } },
+							{ type: 'text', text: prompt },
 						],
 					},
 				],
-				generationConfig: {
-					responseMimeType: 'application/json',
-				},
+				temperature: 0.1,
+				max_tokens: 256,
 			}),
 		});
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			throw new InternalServerErrorException(`Gemini food analysis failed: ${errorText}`);
+			console.error('GROQ vision error:', errorText);
+			throw new InternalServerErrorException(`Food analysis failed: ${response.statusText}`);
 		}
 
 		const data = await response.json();
-		const rawText = data?.candidates?.[0]?.content?.parts?.map((part: any) => part.text).filter(Boolean).join('') ?? '';
+		const rawText: string = data?.choices?.[0]?.message?.content ?? '';
 		const parsed = this.parseFoodAnalysis(rawText);
 
 		return await this.aiAnalyzeModel.create({
@@ -80,7 +79,7 @@ export class AiService {
 			protein: parsed.protein,
 			carbs: parsed.carbs,
 			fats: parsed.fats,
-			aiProvider: `GEMINI:${model}`,
+			aiProvider: `GROQ:${model}`,
 			aiRawResult: rawText,
 		});
 	}
@@ -89,10 +88,13 @@ export class AiService {
 		return await this.aiAnalyzeModel.find({ memberId }).sort({ createdAt: -1 }).exec();
 	}
 
-	private parseFoodAnalysis(rawText: string): GeminiFoodResult {
+	private parseFoodAnalysis(rawText: string): FoodResult {
 		try {
 			const cleanText = rawText.replace(/```json|```/g, '').trim();
-			const result = JSON.parse(cleanText);
+			// Extract JSON object if surrounded by other text
+			const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+			const jsonStr = jsonMatch ? jsonMatch[0] : cleanText;
+			const result = JSON.parse(jsonStr);
 			return {
 				foodName: String(result.foodName ?? 'Unknown food'),
 				estimatedCalories: Number(result.estimatedCalories ?? 0),
@@ -101,7 +103,7 @@ export class AiService {
 				fats: Number(result.fats ?? 0),
 			};
 		} catch (err) {
-			console.log('Gemini JSON parse error:', err);
+			console.log('Food JSON parse error, raw:', rawText);
 			throw new InternalServerErrorException(Message.SOMETHING_WENT_WRONG);
 		}
 	}
