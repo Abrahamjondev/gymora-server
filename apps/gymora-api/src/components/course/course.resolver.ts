@@ -5,6 +5,9 @@ import { CourseInput, CourseUpdate, CoursesInquiry } from '../../libs/dto/course
 import { CourseService } from './course.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { WithoutGuard } from '../auth/guards/without.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { MemberType } from '../../libs/enums/member.enum';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import type { ObjectId } from 'mongoose';
 
@@ -78,5 +81,31 @@ export class CourseResolver {
 		@AuthMember('_id') memberId: ObjectId,
 	): Promise<Course> {
 		return await this.courseService.confirmCoursePayment(sessionId, courseId, memberId.toString());
+	}
+
+	/** ADMIN **/
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Query(() => Courses)
+	public async getAllCoursesByAdmin(@Args('input') input: CoursesInquiry): Promise<Courses> {
+		console.log('Query getAllCoursesByAdmin');
+		return await this.courseService.getAllCoursesByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Course)
+	public async updateCourseByAdmin(@Args('input') input: CourseUpdate): Promise<Course> {
+		console.log('Mutation updateCourseByAdmin');
+		return await this.courseService.updateCourseByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Course)
+	public async deleteCourseByAdmin(@Args('courseId') courseId: string): Promise<Course> {
+		console.log('Mutation deleteCourseByAdmin');
+		return await this.courseService.deleteCourseByAdmin(courseId);
 	}
 }

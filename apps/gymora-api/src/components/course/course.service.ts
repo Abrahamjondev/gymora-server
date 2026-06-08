@@ -209,4 +209,51 @@ export class CourseService {
 		const trainer = await this.trainerModel.findOne({ _id: trainerId, memberId }).exec();
 		if (!trainer) throw new UnauthorizedException(Message.NOT_ALLOWED_REQUEST);
 	}
+
+	/** ADMIN **/
+
+	public async getAllCoursesByAdmin(input: CoursesInquiry): Promise<Courses> {
+		const { page, limit, sort, direction, search } = input;
+		const match: Record<string, any> = {};
+
+		if (search.courseCategory) match.courseCategory = search.courseCategory;
+		if (search.courseDifficulty) match.courseDifficulty = search.courseDifficulty;
+		if (search.text) {
+			match.$or = [
+				{ courseTitle: { $regex: new RegExp(search.text, 'i') } },
+				{ courseDesc: { $regex: new RegExp(search.text, 'i') } },
+			];
+		}
+
+		const sortKey = sort ?? 'createdAt';
+		const sortDir = direction ?? Direction.DESC;
+
+		const result = await this.courseModel
+			.aggregate([
+				{ $match: match },
+				{ $sort: { [sortKey]: sortDir as 1 | -1 } },
+				{
+					$facet: {
+						list: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+
+		if (!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+		return result[0];
+	}
+
+	public async updateCourseByAdmin(input: CourseUpdate): Promise<Course> {
+		const result = await this.courseModel.findByIdAndUpdate(input._id, input, { new: true }).exec();
+		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		return result;
+	}
+
+	public async deleteCourseByAdmin(courseId: string): Promise<Course> {
+		const result = await this.courseModel.findByIdAndDelete(courseId).exec();
+		if (!result) throw new InternalServerErrorException(Message.REMOVE_FAILED);
+		return result;
+	}
 }

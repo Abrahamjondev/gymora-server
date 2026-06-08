@@ -90,4 +90,49 @@ export class TrainerService {
 		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
 		return result;
 	}
+
+	/** ADMIN **/
+
+	public async getAllTrainersByAdmin(input: TrainersListInquiry): Promise<Trainers> {
+		const { page, limit, sort, direction, search } = input;
+		const match: Record<string, any> = {};
+
+		if (search.text) {
+			match.$or = [
+				{ trainerBio: { $regex: new RegExp(search.text, 'i') } },
+				{ trainerSpecializations: { $elemMatch: { $regex: new RegExp(search.text, 'i') } } },
+			];
+		}
+
+		const sortKey = sort ?? 'createdAt';
+		const sortDir = direction ?? Direction.DESC;
+
+		const result = await this.trainerModel
+			.aggregate([
+				{ $match: match },
+				{ $sort: { [sortKey]: sortDir as 1 | -1 } },
+				{
+					$facet: {
+						list: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+
+		if (!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+		return result[0];
+	}
+
+	public async updateTrainerByAdmin(input: TrainerUpdate): Promise<Trainer> {
+		const result = await this.trainerModel.findByIdAndUpdate(input._id, input, { new: true }).exec();
+		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		return result;
+	}
+
+	public async deleteTrainerByAdmin(trainerId: string): Promise<Trainer> {
+		const result = await this.trainerModel.findByIdAndDelete(trainerId).exec();
+		if (!result) throw new InternalServerErrorException(Message.REMOVE_FAILED);
+		return result;
+	}
 }

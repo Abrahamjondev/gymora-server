@@ -77,4 +77,30 @@ export class WorkoutResolver {
 	public async getFreeWorkoutCount(@AuthMember('_id') memberId: ObjectId): Promise<number> {
 		return await this.workoutService.getFreeWorkoutCount(memberId.toString());
 	}
+
+	/** ADMIN **/
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Query(() => Workouts)
+	public async getAllWorkoutsByAdmin(@Args('input') input: WorkoutsInquiry): Promise<Workouts> {
+		console.log('Query getAllWorkoutsByAdmin');
+		return await this.workoutService.getAllWorkoutsByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Workout)
+	public async updateWorkoutByAdmin(@Args('input') input: WorkoutUpdate): Promise<Workout> {
+		console.log('Mutation updateWorkoutByAdmin');
+		return await this.workoutService.updateWorkoutByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Workout)
+	public async deleteWorkoutByAdmin(@Args('workoutId') workoutId: string): Promise<Workout> {
+		console.log('Mutation deleteWorkoutByAdmin');
+		return await this.workoutService.deleteWorkoutByAdmin(workoutId);
+	}
 }

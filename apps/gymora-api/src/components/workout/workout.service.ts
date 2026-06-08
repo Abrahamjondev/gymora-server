@@ -183,4 +183,52 @@ export class WorkoutService {
 			deletedAt: { $exists: false },
 		});
 	}
+
+	/** ADMIN **/
+
+	public async getAllWorkoutsByAdmin(input: WorkoutsInquiry): Promise<Workouts> {
+		const { page, limit, sort, direction, search } = input;
+		const match: Record<string, any> = {};
+
+		if (search.workoutDifficulty) match.workoutDifficulty = search.workoutDifficulty;
+		if (search.targetMuscle) match.targetMuscle = { $regex: new RegExp(search.targetMuscle, 'i') };
+		if (search.text) {
+			match.$or = [
+				{ workoutTitle: { $regex: new RegExp(search.text, 'i') } },
+				{ workoutDesc: { $regex: new RegExp(search.text, 'i') } },
+			];
+		}
+		if (search.isFree !== undefined) match.isFree = search.isFree;
+
+		const sortKey = sort ?? 'createdAt';
+		const sortDir = direction ?? Direction.DESC;
+
+		const result = await this.workoutModel
+			.aggregate([
+				{ $match: match },
+				{ $sort: { [sortKey]: sortDir as 1 | -1 } },
+				{
+					$facet: {
+						list: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+
+		if (!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+		return result[0];
+	}
+
+	public async updateWorkoutByAdmin(input: WorkoutUpdate): Promise<Workout> {
+		const result = await this.workoutModel.findByIdAndUpdate(input._id, input, { new: true }).exec();
+		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		return result;
+	}
+
+	public async deleteWorkoutByAdmin(workoutId: string): Promise<Workout> {
+		const result = await this.workoutModel.findByIdAndDelete(workoutId).exec();
+		if (!result) throw new InternalServerErrorException(Message.REMOVE_FAILED);
+		return result;
+	}
 }

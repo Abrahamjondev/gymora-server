@@ -5,6 +5,9 @@ import { Trainer, Trainers } from '../../libs/dto/trainer/trainer';
 import { TrainerInput, TrainerUpdate, TrainersListInquiry } from '../../libs/dto/trainer/trainer.input';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { WithoutGuard } from '../auth/guards/without.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { MemberType } from '../../libs/enums/member.enum';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import type { ObjectId } from 'mongoose';
 
@@ -39,5 +42,31 @@ export class TrainerResolver {
 	@Mutation(() => Trainer)
 	public async updateTrainer(@Args('input') input: TrainerUpdate, @AuthMember('_id') memberId: ObjectId): Promise<Trainer> {
 		return await this.trainerService.updateTrainer(memberId.toString(), input);
+	}
+
+	/** ADMIN **/
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Query(() => Trainers)
+	public async getAllTrainersByAdmin(@Args('input') input: TrainersListInquiry): Promise<Trainers> {
+		console.log('Query getAllTrainersByAdmin');
+		return await this.trainerService.getAllTrainersByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Trainer)
+	public async updateTrainerByAdmin(@Args('input') input: TrainerUpdate): Promise<Trainer> {
+		console.log('Mutation updateTrainerByAdmin');
+		return await this.trainerService.updateTrainerByAdmin(input);
+	}
+
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation(() => Trainer)
+	public async deleteTrainerByAdmin(@Args('trainerId') trainerId: string): Promise<Trainer> {
+		console.log('Mutation deleteTrainerByAdmin');
+		return await this.trainerService.deleteTrainerByAdmin(trainerId);
 	}
 }
