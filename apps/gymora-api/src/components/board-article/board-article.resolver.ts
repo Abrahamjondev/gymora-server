@@ -15,7 +15,7 @@ import type { ObjectId } from 'mongoose';
 export class BoardArticleResolver {
 	constructor(private readonly articleService: BoardArticleService) {}
 
-	@Roles(MemberType.TRAINER)
+	@Roles(MemberType.TRAINER, MemberType.ADMIN)
 	@UseGuards(RolesGuard)
 	@Mutation(() => BoardArticle)
 	public async createBoardArticle(
