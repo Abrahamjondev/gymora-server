@@ -575,6 +575,11 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 - Sidebar readability: items 13→14px, weight 600/700, brighter inactive color
 - TypeScript 0 errors
 
+## Privacy + Terms Pages (2026-06-10)
+
+- Footer Privacy/Terms were dead '#' links — created /privacy and /terms as premium static pages (wl-hero header, wd-section blocks, Support CTA); content is honest plain-language reflecting actual platform behavior (Stripe handles cards, review eligibility rules, free workouts / paid programs, health disclaimer)
+- Both footers (LandingFooter + GymFooter) now link to the real pages; smoke-tested clean
+
 ## BACKEND FIX: Socket Crash on Invalid Token (2026-06-10)
 
 - Root cause: socket.gateway.ts handleConnection's catch emitted 'exception' + disconnected the client, then RE-THREW WsException — lifecycle-hook throws bypass Nest's ws exception filters → unhandled rejection → process exit. Any stranger with an invalid token could kill the API (DoS)
@@ -845,3 +850,26 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 ### Sticky sidebar overlap fix (2026-06-10)
 - Bug: .td-profile was sticky while .td-people-card scrolled in flow → cards visually overlapped during scroll (both semi-transparent)
 - Fix: new .td-sticky wrapper makes profile + people cards stick together as one unit (top: 80px, max-height: calc(100vh - 96px) with hidden internal scroll for tall content); applied on /trainer/detail and /member; static on ≤1024px
+
+
+## Cross-member Social Notifications (2026-06-10)
+
+### Backend fix (explicit user permission)
+- notification.resolver.ts createNotification: previously ALWAYS overrode input.memberId with the authenticated member's id — notifications could only ever be sent to yourself, so likes/comments/reviews could never notify content owners
+- Fix: `const receiverId = input.memberId ?? memberId.toString();` — input.memberId (receiver) is honored when provided; falls back to self when omitted (preserves existing self-notification flows: subscription, AI scan, etc.)
+- Verified live e2e on dev API: user A → createNotification(memberId: B) landed ONLY in B's getNotifications; A's no-memberId call landed ONLY in A's inbox; no cross-leakage; throwaway test users + notifications deleted from DB afterwards
+- Backend tsc clean
+
+### Socket gateway crash fix (2026-06-10, explicit user permission — earlier this session)
+- handleConnection re-threw WsException on invalid token → lifecycle-hook throws bypass ws exception filters → unhandled rejection crashed the whole API process (any anonymous client could DoS the server)
+- Fix: emit('exception') + client.disconnect(true), no re-throw; verified with 3 consecutive invalid-token connections — server stays up
+
+### Frontend wiring (gymora-next)
+- New libs/notify.ts: notifyMember(receiverId, selfId, type, title, message) — fire-and-forget CREATE_NOTIFICATION via initializeApollo(); guards: missing ids and self-notification are no-ops; all errors swallowed (best-effort)
+- Wired into all social actions (only on like, never unlike; via existing nextLiked/wasLiked flags):
+  - /workout list + detail like → WORKOUT "New like on your workout" to workout.memberId
+  - /workout detail comment + review → WORKOUT notifications to owner
+  - /community list + detail like, detail comment → SYSTEM notifications to article.memberId
+  - /trainer/detail profile like + trainer review → SYSTEM notifications to the trainer's member id
+  - /member profile like → SYSTEM notification to the member
+- Frontend tsc clean; all 6 touched pages smoke-tested 200 on dev server

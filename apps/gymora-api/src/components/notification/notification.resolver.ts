@@ -17,7 +17,10 @@ export class NotificationResolver {
 		@Args('input') input: NotificationInput,
 		@AuthMember('_id') memberId: ObjectId,
 	): Promise<GymoraNotification> {
-		return await this.notificationService.createNotification({ ...input, memberId: memberId.toString() });
+		// input.memberId = receiver (social notifications: likes, comments, reviews);
+		// falls back to self when omitted
+		const receiverId = input.memberId ?? memberId.toString();
+		return await this.notificationService.createNotification({ ...input, memberId: receiverId });
 	}
 
 	@UseGuards(AuthGuard)
