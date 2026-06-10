@@ -575,6 +575,144 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 - Sidebar readability: items 13→14px, weight 600/700, brighter inactive color
 - TypeScript 0 errors
 
+## BACKEND FIX: Socket Crash on Invalid Token (2026-06-10)
+
+- Root cause: socket.gateway.ts handleConnection's catch emitted 'exception' + disconnected the client, then RE-THREW WsException — lifecycle-hook throws bypass Nest's ws exception filters → unhandled rejection → process exit. Any stranger with an invalid token could kill the API (DoS)
+- Fix: removed the re-throw (emit + disconnect is the correct rejection); explanatory comment added. WsException retained where valid (inside @SubscribeMessage handlers)
+- Verified: apps/gymora-api tsc clean; live test — 3 consecutive invalid-token connections rejected, backend stays up (sayHello 200 after)
+
+## Readability + Realtime Verification Pass (2026-06-10)
+
+### Dim text fixed platform-wide (user: landing views/likes unreadable)
+- HotWorkouts cards: kcal → 13px/700 orange; views/likes → 13px/600 with white bold numbers (were 10px mono at 0.35 alpha)
+- Elite Trainers: list indices → cyan, workouts/followers meta → 13px/600 bright (were 10px mono 0.4), footnote brightened, inactive names 0.35→0.5
+- Top Programs: ranked-row meta 9.5→11px/600 bright, row indices → cyan, spotlight meta 10.5→12px/600
+- Community Pulse cards: meta 10px mono 0.45 → 12.5px/600 Hanken bright; footer copyright 0.25→0.45
+
+### Realtime verified
+- Socket endpoint LIVE-tested: connects, auth-guard rejects invalid tokens with proper exception; auth token path (handshake.auth.token) matches gateway; chat:message event names match both sides — messages will flow for logged-in users
+- Notifications UI verified working (list/markRead/markAll); creation still backend-limited to follows (known)
+- ⚠ BACKEND HARDENING NOTE: an invalid-token socket connection CRASHED the Nest process (unhandled exception in handleConnection) — backend should wrap handleConnection in try/catch + client.disconnect(). Backend restarted (log /tmp/gymora-api.log)
+
+### Design consistency
+- Full-page screenshot review after fixes: landing sections consistent; production build + 20-page smoke previously green
+
+## Final Verification Pass (2026-06-10)
+
+- PRODUCTION BUILD PASSES: `yarn build` — all 33 routes compile + prerender (17.9s), zero errors
+- Full smoke test: 20 page loads (13 desktop + 7 mobile routes) — zero runtime errors
+- Hygiene sweep: no emojis, no TODOs, no unreachable mobile forks; deleted last dead folders (components/property, components/agent); removed decorative login/signup console.logs from libs/auth (error-path logs in utils kept intentionally)
+- Known acceptable leftovers: Privacy/Terms footer links are '#' (no legal pages exist — honest placeholder), unused apollo exports kept for future use, cross-member notifications backend-blocked
+- Note: running `yarn build` corrupted the live dev server's .next cache — dev server restarted clean (nohup yarn dev, log at /tmp/gymora-dev.log)
+
+## Program Creation → Lesson Manager Flow (2026-06-10)
+
+- User couldn't find where to add videos when creating a program — by design videos live on LESSONS, but the flow didn't communicate it and dead-ended
+- createCourseHandler now: captures created course _id → refetches trainer programs (FIX: list previously didn't refresh after create) → AUTO-OPENS LessonManager for the new program → success message "Now add your lessons and videos below"
+- Create Program header hint added explaining the lesson-video flow
+- createWorkoutHandler: same missing-refetch fix for My Workouts list
+- TypeScript 0 errors
+
+## Final Sweep — Mobile MyPage + Last Leftovers (2026-06-10)
+
+- MyPage was STILL blocked on phones ("GYMORA MY PAGE MOBILE" placeholder) — fork removed; layout moved to .mp-layout class (292px+1fr → single column ≤1024px, sidebar unsticks); mobile smoke test clean
+- Standalone /subscription page: mobile placeholder removed, plan grid → auto-fit minmax(280px) responsive
+- Dead code removed: mypage followers/followings "Coming soon" blocks (unreachable), libs/components/cs/ legacy folder (Notice/Inquiry/Faq), common/CommunityCard
+- Remaining OPTIONAL items (documented, not blockers): unused apollo exports kept (GET_TRAINERS, SEND_MESSAGE, CALCULATE_ANALYTICS, GET_ONLINE_STATUS, IMAGE/IMAGES/VIDEO_UPLOADER gql defs — raw-axios/upload.ts used instead), analytics dashboard chart, REST chat fallback; cross-member notifications still backend-blocked
+- TypeScript 0 errors
+
+## External Video Hosting Support (2026-06-10)
+
+- Decision (user): workout = single video; programs = many videos → external video hosting (Bunny/CF Stream/YouTube) with URL stored in DB. Backend already accepts arbitrary URL strings (LessonInput.videoUrl / WorkoutInput.videoUrl)
+- NEW libs/components/common/VideoPlayer.tsx: universal player — YouTube (watch/youtu.be/shorts/embed) and Vimeo → 16:9 iframe; direct files → <video> with absolute http(s) used as-is and backend-relative paths prefixed with API host
+- FIX: workout detail hard-prefixed API_URL onto videoUrl (external links broke) → now VideoPlayer
+- NEW: program detail curriculum — enrolled members get a Watch/Close toggle per lesson with inline VideoPlayer (lesson videos previously had NO playback UI at all)
+- Workout create/edit media row: added paste-URL input alongside upload ("YouTube, Vimeo, mp4"); LessonManager already had paste+upload
+- Known backend note: getLessonsByCourse/getCourse expose lesson videoUrls publicly — paid-content protection needs backend (signed URLs); frontend gates playback UI by enrollment
+- TypeScript 0 errors
+
+## Full-Project Deep Analysis Batch (2026-06-10)
+
+### 🔴 Critical fixes
+1. STRIPE COURSE PURCHASE WAS BROKEN END-TO-END: success/cancel URLs use ?courseId= but page read ?id= ("Program not found" after paying); confirmCoursePayment was never called and backend has no webhook → paid members were never enrolled. Fixed: course detail accepts both params; on session_id it calls confirmCoursePayment (guarded ref), refetches, success alert, strips stripe params via shallow replace
+2. NUTRITION "TODAY" BUG: intake summed ALL-TIME meal history → now filtered to today only
+3. NEW FEATURE (user request): Calorie history in Nutrition — Week (7 daily bars) / Month (30 daily) / Year (12 monthly sums) from real getNutritionHistory daily docs; bar chart with today highlighted, totals + avg/active-day + days-logged summary; auto-refreshes after every meal add/delete
+
+### 🟠 Backend-ready features wired
+4. Media uploads: new libs/upload.ts (imageUploader(file,target) + videoUploader(file) — signatures verified); thumbnail upload+preview on Create/Edit Workout and Create/Edit Program; workout video upload; LessonManager video upload button
+5. Exercises (Training Plan) builder: dynamic name/sets/reps rows on Create/Edit Workout (WorkoutInput.exercises / WorkoutUpdate.exercises verified); cleanExercises strips __typename and coerces numbers
+6. Free workout slots: GET_FREE_WORKOUT_COUNT shown on Create Workout (backend FREE_WORKOUT_LIMIT env, default 2)
+7. Live partner presence: GET_PARTNER_ONLINE_STATUS fetched when a conversation opens, merges into conversation list
+8. Become Trainer now auto-logs out after success (stale JWT) with clearer message
+
+### ⚠️ Cannot fix without backend (documented)
+- Cross-member notifications: notification.resolver.ts:20 OVERRIDES input.memberId with the authenticated member — createNotification can only notify yourself. Like/comment/review notifications require a one-line backend change (use input.memberId as receiver)
+
+### Honesty + cleanup
+- Subscription copy made honest on landing PricingSection + mypage SubscriptionContent (backend gates nothing on subscription): membership framed as supporting the platform/trainers, not as unlocking content
+- 32 dead Nestar-era components deleted (member/* folder, My/Properties/Favorites/Menu/RecentlyVisited/AddNewProperty/PropertyCard, MemberPanelList, Top, AgentCard, PropertyBigCard, Fiber/ScrollControls, 14 legacy homepage components incl. SubscriptionPlans/CommunityBoards/property cards); AdminMenuList cs case removed
+- TypeScript 0 errors
+
+## Trainer Content Editing + Lesson Manager (2026-06-10)
+
+### Gap analysis (user asked: can trainers edit their content?)
+- Backend FULLY supports it: updateWorkout (TRAINER role), updateCourse (auth), createLesson/updateLesson/deleteLesson (TRAINER, ownership in services) — but frontend had ZERO edit UI; UPDATE_COURSE didn't even exist in apollo; CREATE_LESSON existed unused → this is WHY every program had an empty curriculum (trainers had no way to add lessons)
+
+### Implemented
+- apollo/user/mutation.ts: added UPDATE_COURSE (CourseUpdate)
+- My Workouts: Edit button per card → prefilled panel (title/desc/muscle chips/difficulty seg/kcal) → updateWorkout → refetch
+- My Programs: Edit button → prefilled panel (title/desc/category accent buttons/difficulty/price/weeks) → updateCourse; Lessons button → NEW LessonManager component
+- LessonManager (libs/components/mypage/LessonManager.tsx): full lesson CRUD for the trainer's own program — sorted W{n} list (pd-lesson rows) with Edit/Delete, add/edit form (title*, week*, order*, duration, description, videoUrl) matching backend LessonInput exactly; createLesson/updateLesson/deleteLesson with graphQL error surfacing
+- TypeScript 0 errors
+
+## Admin Panel Round 2 — Users Rewrite + Deep Bug Pass (2026-06-10)
+
+### Bugs found (deep analysis) and fixed
+1. USERS PAGE STATE BUGS (legacy Nestar): direct state mutation everywhere (membersInquiry.page = ...), double setState where the second overwrote the first, and status-tab changes REPLACED the whole search object — wiping memberType/text filters (and vice versa). Rewritten with immutable buildSearch() composition: status + type + text now combine correctly
+2. TRAINERS LIST HAD NO NAMES: backend Trainer DTO has no memberData and getAllTrainersByAdmin does no $lookup (verified in trainer.service.ts) — frontend now resolves names/avatars via one GET_TRAINER_MEMBERS(limit 200) call mapped by memberId; Trainer column shows avatar + name + short id
+3. WHITE LEGACY UI: users page dropped MUI MemberPanelList/Tabs entirely → ad-* dark table; LayoutAdmin avatar dropdown Menu had white paper → dark glass PaperProps (#161618, border, red-tinted Logout)
+
+### Round 3 — legacy white CSS hunted down
+- ROOT CAUSE of all remaining white patches: legacy `scss/pc/admin/admin.scss` (#pc-wrap ID selectors beat MUI sx): `.MuiAppBar-root{background:#fff}` (white strip above page titles), `.aside .user{background:#f5f5f5}` (white profile card in drawer), red Nestar menu-active (#FDF4F4/#F54D56), white .table-wrap/thead/inputs/buttons — ALL darkened to the gymora palette (glass appbar, dark user chip, cyan active menu)
+- Native <select> dropdown opened with a white panel → `color-scheme: dark` on body (Chromium renders native popups/scrollbars dark platform-wide) + dark option backgrounds on admin selects
+
+### Users page (rebuilt)
+- wl-console filters: nickname search w/ clear, status segmented (All/Active/Block/Delete), type accent buttons (User cyan / Trainer green / Admin violet)
+- Rows: avatar + nick + full name, phone, TYPE as inline select (updateMemberByAdmin on change), STATUS chip colored, warnings/blocks counts, joined date
+- Actions: Activate / Block / Delete status buttons (current status's button hidden); all via updateMemberByAdmin + refetch
+- TypeScript 0 errors
+
+## Support (/cs) + About Pages (2026-06-10)
+
+- Backend audit FIRST: no CS/FAQ/notice/inquiry module exists (components list + schema introspection — zero matching queries) → both pages are honest static content, no fake forms/emails
+- /cs: "How can we help?" gradient hero; animated FAQ accordion (cs-acc, grid-rows transition, rotating + icon) with 7 answers all grounded in real platform behavior (free workouts, Stripe purchases + lesson drip, trainer verification, review eligibility rules, AI scanner, $14.99/$119.88 plans, real-time chat); "Still have a question?" CTA → community / trainers (no fake support email or ticket form)
+- /about: editorial hero, LIVE platform stats from real public queries (GET_WORKOUTS / GET_TRAINER_MEMBERS / GET_COURSES totals with count-up), "What we stand for" values grid (ab-value cards), CTA banner
+- .lp-cta styles restored to landing.scss (removed earlier with FinalCTA; now used by cs/about)
+- Mobile scrollWidth 390; TypeScript 0 errors
+
+## Admin Console Overhaul — Full Backend Coverage (2026-06-10)
+
+### Backend audit (16 admin ops) → UI coverage
+- VERIFIED against resolvers + live schema introspection. Now every admin op has UI:
+  - getAllMembersByAdmin / updateMemberByAdmin → users page (existing)
+  - getAllTrainersByAdmin / updateTrainerByAdmin / deleteTrainerByAdmin → trainers page (update was MISSING — added Verify/Reject via trainerVerificationStatus)
+  - getAllWorkoutsByAdmin / updateWorkoutByAdmin / deleteWorkoutByAdmin → workouts page (update was imported-but-unused — wired as inline kcal edit)
+  - getAllCoursesByAdmin / updateCourseByAdmin / deleteCourseByAdmin → programs page (update was MISSING — inline price edit)
+  - getLessonsByAdmin / deleteLessonByAdmin → NO UI existed — added expandable lessons panel per program (W01·01 rows, duration, delete)
+  - deleteBoardArticleByAdmin → community page; removeCommentByAdmin → NO UI existed — wired into /community/detail (admins see ✕ on every comment; own comments still use updateComment)
+
+### CRITICAL FIX — admin community page was broken
+- Page read data.getAllBoardArticlesByAdmin but backend has NO such resolver (schema introspection: only getBoardArticles exists; apollo query already aliased it) → list was always empty; AllBoardArticlesInquiry's articleStatus search also failed validation. Rewritten on BoardArticlesInquiry: category accent filters, author/views/likes/comments/date columns, Open + Delete actions
+- getAllCoursesByAdmin query: added purchasedMembers (backend @Field verified) → Enrolled column
+
+### Shell + design
+- LayoutAdmin: dark glass AppBar, #101012 drawer with gymora ADMIN wordmark (replaces nestar logoText.svg); ADMIN-only guard already present (verified: guests redirected)
+- AdminMenuList: legacy Cs (FAQ/Notice — no backend module) removed; Courses → Programs label
+- Legacy /_admin/cs/faq|notice|inquiry pages → redirect to /_admin/users
+- New ad-* design system: dark card-row tables (separated rounded rows, mono headers, hover glow), status/category chips via CSS vars, success/danger action buttons, inline edit inputs
+- '✅ Free' emoji column removed from workouts
+- TypeScript 0 errors
+
 ## My Articles + Create Workout/Program Forms (2026-06-10)
 
 ### My Articles

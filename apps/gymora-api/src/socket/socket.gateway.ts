@@ -63,10 +63,12 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 			this.summaryClient++;
 			this.logger.verbose(`== Client connected member: ${memberId} total: ${this.summaryClient} ==`);
 		} catch (err) {
+			// Do NOT re-throw here: exceptions thrown from handleConnection bypass
+			// Nest's ws exception filters and crash the whole process. Rejecting
+			// the client with an event + disconnect is sufficient.
 			this.logger.warn(`Unauthorized socket connection rejected: ${err instanceof Error ? err.message : Message.NOT_AUTHENTICATED}`);
 			client.emit('exception', new UnauthorizedException(Message.NOT_AUTHENTICATED).getResponse());
 			client.disconnect(true);
-			throw new WsException(Message.NOT_AUTHENTICATED);
 		}
 	}
 
