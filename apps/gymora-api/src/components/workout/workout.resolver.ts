@@ -36,8 +36,11 @@ export class WorkoutResolver {
 
 	@UseGuards(WithoutGuard)
 	@Query(() => Workouts)
-	public async getWorkouts(@Args('input') input: WorkoutsInquiry): Promise<Workouts> {
-		return await this.workoutService.getWorkouts(input);
+	public async getWorkouts(
+		@Args('input') input: WorkoutsInquiry,
+		@AuthMember('_id') memberId: ObjectId,
+	): Promise<Workouts> {
+		return await this.workoutService.getWorkouts(input, memberId);
 	}
 
 	@Roles(MemberType.TRAINER)

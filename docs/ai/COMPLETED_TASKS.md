@@ -392,3 +392,318 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 - `pages/subscription/index.tsx` — full rewrite with Stripe Elements
 - `apollo/user/mutation.ts` — CREATE_SUBSCRIPTION response fields
 - `.env.development` — NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+## MyPage Sidebar Unification + Nutrition Overhaul (2026-06-09)
+
+### Sidebar: Messages, Nutrition, Progress, Subscription moved inside MyPage
+- **Problem**: These 4 pages were separate routes (`/chat`, `/nutrition`, `/progress`, `/subscription`) — navigating to them caused the sidebar to disappear
+- **Solution**: Extracted content into reusable components, rendered as `category` inside `/mypage`
+- Created 4 new components in `libs/components/mypage/`:
+  - `ChatContent.tsx` — Messages (conversations + chat)
+  - `NutritionContent.tsx` — Nutrition dashboard
+  - `ProgressContent.tsx` — Progress tracker
+  - `SubscriptionContent.tsx` — Subscription with Stripe
+- Removed `isLink` property from menuItems — all items now render inside mypage with sidebar visible
+- `menuHandler` simplified — no more `router.push` to external routes
+
+### Sidebar Visual Upgrade
+- Profile card: circular avatar with cyan glow border, gradient background, badge-style member type
+- Menu grouped into sections: (none), Content, Activity, Health, (none) — with section title labels
+- Each item has an icon (Unicode symbols)
+- Active state: gradient background, cyan left indicator bar, icon highlight, box-shadow
+- Become Trainer: distinct green accent
+- Sticky positioning (`position: sticky, top: 24px`)
+- Text readability improved: inactive items `#c8d6d6`, icons `#9aabab`, font-weight 500, font-size 13.5px
+
+### Nutrition Plan Calculator
+- **Before**: Hardcoded values (gender: MALE, age: 25, weight: 75kg) sent to `getNutritionRecommendation`
+- **After**: Interactive form with Gender toggle, Age, Height, Weight, Activity Level select, Goal selector (Weight Loss / Maintenance / Muscle Gain) with visual cards
+- Backend calculates: BMR (Mifflin-St Jeor), TDEE, daily calories, protein/carbs/fats, BMI, meal plan, tips
+- Results show: macro targets, body metrics (BMI, BMR, TDEE), suggested meal plan (uzbek food suggestions), personalized tips
+- Today's intake: progress bars comparing eaten vs target
+- **localStorage persistence**: form values and results saved — navigating away and back preserves the plan
+
+### AI Food Scanner
+- **"Scan Food" button** in header — uploads food image
+- Backend: GROQ Llama Vision API analyzes the image → returns foodName, calories, protein, carbs, fats
+- Scan result card: food image preview, nutritional breakdown (4 macro cards)
+- **"Log as" buttons**: Breakfast / Lunch / Dinner / Snack — adds AI result directly to daily meal log
+- AI History sidebar: shows past scans with thumbnail, macros, and quick-log buttons (B/L/D/S)
+- Logged meals count toward daily nutrition progress bars
+
+### Files created:
+- `libs/components/mypage/ChatContent.tsx`
+- `libs/components/mypage/NutritionContent.tsx` (full rewrite)
+- `libs/components/mypage/ProgressContent.tsx`
+- `libs/components/mypage/SubscriptionContent.tsx`
+
+### Files modified:
+- `pages/mypage/index.tsx` — new imports, menuSections with icons/groups, sidebar redesign, category renders
+
+## Landing Page Premium Redesign (2026-06-10)
+
+### Hero — full-bleed athletic photo
+- New asset: `public/img/banner/hero-athlete.jpg` (Unsplash, free license, dark barbell shot matching cyan palette)
+- Duotone tint overlays + grain + orb retained from previous mesh system
+- Editorial typography: clamp(46px → 92px), per-word rise reveal animation (lpRise)
+- Count-up animated stats (real backend totals: GET_WORKOUTS / GET_TRAINER_MEMBERS metaCounter)
+- Discipline marquee strip below hero (muscle groups + course categories from app's filter vocabulary)
+
+### New landing sections (all backend-grounded, hide when empty)
+- `HowItWorks.tsx` — 3 steps mirroring real product flow (free workouts → courses w/ Stripe → AI nutrition/progress)
+- `CommunityPulse.tsx` — latest 3 articles via GET_BOARD_ARTICLES (createdAt DESC)
+- `PricingSection.tsx` — canonical PLAN_PRICES mirror ($14.99 monthly / $119.88 yearly = $9.99/mo, Save 33%) → /subscription
+- (AthleteReviews + FinalCTA were built, then removed on user request — sparse review data looked weak)
+
+### Section redesigns
+- HotWorkouts: bento grid — #1 workout featured 2x2 card, 4 compact cards (limit 6→5)
+- EliteTrainers: agency-style editorial name list + hover-driven sticky portrait panel
+- TopCourses: spotlight layout — #1 course as cinematic full-image feature card (desc, chips, hover-reveal "View Program" CTA, category glow) + ranked compact rows 02–04 with accent bar, thumb, meta, price, hover slide
+
+### Architecture / quality
+- New `scss/landing.scss` (imported in app.scss): full lp-* class system, all grids responsive (1024px → 2col, 640px → 1col), keyframes lpRise/lpMarquee
+- New hooks: `useCountUp` (rAF ease-out), `useReveal` (IntersectionObserver scroll-reveal, `ready` param for data-dependent sections)
+- Inline-style JS hovers replaced with CSS :hover (workouts/trainers/buttons)
+- `loading="lazy"` on all below-fold card images
+- GymNavbar: center nav hidden ≤768px (was overflowing on mobile)
+- Verified via headless Chrome screenshots: desktop 1440px + mobile 390px, all sections render, TypeScript 0 errors
+- Zero GraphQL operation changes — UI layer only
+
+### Navbar + Footer redesign (2026-06-10, follow-up)
+- GymNavbar rewritten to CSS classes (gnav-*): 62px slim bar, "gymora." wordmark with cyan dot, logo mark rotates+glows on hover, mono-uppercase nav links with animated underline (replaces pill container), logged-in state collapsed into one rounded chip (avatar + nick + divider + Log out), guest state Log in + pill Get Started
+- New `overlay` prop: LayoutHome renders navbar transparently over the hero (no 62px spacer, gradient scrim until scroll) — hero photo now bleeds to the very top; other layouts keep the spacer
+- LandingFooter: 4 columns (brand / Platform / Account / Company), giant outlined GYMORA watermark bleeding off the bottom, bottom bar with copyright + smooth-scroll "Back to top ↑" pill
+- Verified: top/scrolled/mobile navbar states + footer screenshots, TypeScript 0 errors
+- Follow-up: GYMORA watermark removed from footer (user request); navbar readability pass — links switched from 11px mono-uppercase to 14px/700 Hanken Grotesk with text-shadow, underline 1px→2px, user nick 14px/700 white, Log out 12.5px/600
+
+## Workout Library Premium Redesign (2026-06-10)
+
+- New `scss/workout.scss` (wl-* classes), all logic (Apollo queries, optimistic like, filters) untouched
+- Hero: editorial title with gradient word, orange eyebrow, live "{total} protocols available" badge with pulsing dot, soft cyan glow
+- Filter console: single sticky glass toolbar (sticks at 72px under navbar) — search with focus ring, custom-arrow sort select, segmented difficulty control (sliding white pill), muscle chip row
+- Cards: image-forward (16/10, gradient shade, hover zoom), muscle chip on image, KCAL badge (orange mono, bottom-right), difficulty as colored dot (green/orange/red), views + LikeButton + hover-reveal arrow
+- Removed FREE/PREMIUM emoji badge from cards (user request; all workouts are free)
+- Removed mobile placeholder fork ("GYMORA WORKOUTS MOBILE") — page is now fully responsive (3/2/1 columns)
+- Skeleton loaders with shimmer; styled empty state; Clear-all handler extracted
+- Fixed mobile horizontal overflow (hero glow → overflow-x: clip on page; seg control scrolls internally)
+- Verified: desktop top/sticky-scroll states, mobile 390px scrollWidth = 390, TypeScript 0 errors
+- Readability pass (user request): difficulty seg buttons 12.5→14px/700 bright, muscle chips switched from 10.5px mono-uppercase to 13.5px/700 Hanken sentence-case, views 10→13px/600, difficulty label 10→12.5px/700, KCAL 10.5→12px/700
+
+## Workout Detail Premium Redesign (2026-06-10)
+
+- New wd-* classes appended to `scss/workout.scss`; all logic untouched (GET_WORKOUT/GET_COMMENTS/GET_WORKOUT_REVIEWS, optimistic like, comment + review mutations)
+- Hero: cinematic clamp(400–540px) full-bleed thumbnail with dual tint + grain, "← Library" glass back pill, chips (muscle cyan / difficulty colored / KCAL orange), editorial title clamp(36–60px), bold meta row (views · likes · exercises)
+- Layout: content + 320px sticky sidebar (right) via grid-template-areas; on ≤1024px sidebar stacks ABOVE content
+- Sidebar: glass Workout Summary card (mono labels, 21px/800 values, difficulty color dot) + full LikeButton
+- Training Plan: hover-slide rows with cyan index, SETS/REPS chips
+- Comments + Athlete Reviews: glass form cards (focus-ring textarea/input, star picker with hover scale), avatar/nick/date rows; section heads with mono counts; "Reviews" renamed Comments vs Athlete Reviews (star)
+- Removed mobile placeholder fork — fully responsive; mobile scrollWidth = 390 verified
+- TypeScript 0 errors; desktop top/scrolled + mobile screenshots verified
+
+## Trainers Page Premium Redesign (2026-06-10)
+
+- Reuses wl-hero/wl-console/wl-search/wl-sort/wl-badge system; new tr-* classes in `scss/workout.scss`
+- Hero: green eyebrow, "Elite Trainers" gradient title, live "{total} trainers on the roster" badge
+- Added sort dropdown (Top Ranked / Most Liked / Most Viewed / Newest — verified against backend availableTrainerSorts whitelist in libs/config.ts) + search clear button
+- Cards: portrait 4/5, grayscale→color via CSS on card hover (no JS handlers), name+desc overlay on image, ★ memberRank chip, footer with bold workouts/followers counts + LikeButton + hover arrow; green accent matching landing trainers
+- Stats bar restyled (tr-stats): Total Trainers / Workouts Published / Followers / Likes — removed fake "COMMUNITY: Active" stat, replaced with real likes sum
+- Mobile placeholder fork removed; responsive 3/2/1; mobile scrollWidth = 390 verified; TypeScript 0 errors; optimistic like logic untouched
+
+## Trainer Detail Redesign + Logic Gaps Fixed (2026-06-10)
+
+### Logic fixes (backend-verified)
+- ROUTING FIX: trainer list + landing EliteTrainers pushed to `/member?memberId` — the rich `/trainer/detail` page was unreachable. Both now route to `/trainer/detail?id=<memberId>`
+- Review eligibility mirrored client-side (review.service.ts:27-39 — purchase required): GET_MEMBER_PURCHASED_COURSES fetched for logged-in users; form only shows when a purchased course's trainerId matches; otherwise an explanatory note
+- Duplicate review (review.service.ts:61-62) mirrored: if reviews contain user._id → "already reviewed" note instead of form
+- Previously-fetched-but-never-shown data now displayed: trainerSocialLinks (external links with ↗), trainerRatingCount (next to rating), trainerRank, memberViews, memberWorkouts
+- Course cards now show courseThumbnail (was text-only); workouts no longer sliced to 4 — all shown
+- Review error surfaces graphQLErrors[0].message (backend permission texts); follow button gets busy-guard (no double-submit)
+
+### Design (td-* classes in workout.scss)
+- "← Trainers" back pill; sticky profile card: glowing avatar ring, verified/pending chip, 6-stat grid (rating+count / experience / followers / workouts / views / rank), specialization chips, social links, gradient Follow button (ghost "Following" state) + LikeButton
+- Content: Free Workouts (wl-card 2-col), Courses (lp-course-row ranked rows with accent + thumb), Athlete Reviews (wd-comment cards + permission-aware form)
+- Mobile placeholder removed; responsive (profile stacks above content); mobile scrollWidth = 390; TypeScript 0 errors
+
+### Follow-up: Articles + Followers/Following added (2026-06-10)
+- Articles section: GET_BOARD_ARTICLES with search.memberId (public, WithoutGuard verified) — latest 4 trainer articles as lp-article-card grid → /community/detail
+- Followers/Following panel in sidebar (td-people-card): tabbed (counts from member.memberFollowers/memberFollowings), lists via GET_MEMBER_FOLLOWERS (search.followingId) / GET_MEMBER_FOLLOWINGS (search.followerId) — both WithoutGuard public, FollowSearch field names verified in follow.input.ts
+- Person rows: avatar + name + USER/TRAINER type chip (trainer rows green); click routes TRAINER → /trainer/detail, USER → /member
+
+## Member Profile Page Implemented + Redesigned (2026-06-10)
+
+- /member page had PLACEHOLDER tabs ("Followers list will be implemented with the follow components migration") — now fully implemented:
+  - Followers tab: GET_MEMBER_FOLLOWERS (search.followingId), person cards with type chips, routes by memberType
+  - Following tab: GET_MEMBER_FOLLOWINGS (search.followerId)
+  - Articles tab: GET_BOARD_ARTICLES (search.memberId), lp-article-card grid → /community/detail
+  - Workouts tab: upgraded to wl-card grid with KCAL/difficulty
+- Redesigned to td-* premium system: sticky profile card (avatar ring, type chip, 6-stat grid incl. likes/views), segmented tab bar with live counts, follow busy-guard
+- TRAINER members are auto-redirected to the richer /trainer/detail page (router.replace)
+- Mobile placeholder fork removed; TypeScript 0 errors; verified with real USER (testuser2) and trainer-follower navigation
+
+## Programs Page Redesign + Naming Unification (2026-06-10)
+
+- NAMING: UI unified to "Programs" everywhere (backend stays `course`, no API changes): landing section "Top Courses" → "Top Programs", trainer detail "Courses" → "Programs", HowItWorks/Pricing copy "courses" → "programs". Navbar/footer already said Programs
+- /course page redesigned (cl-* classes in workout.scss, reuses wl-hero/console/seg/skel system):
+  - Hero: "Training Programs" gradient title, live "{total} programs available" badge
+  - Console: search + sort (courseRank/courseRating/coursePrice/createdAt), difficulty segmented control, category buttons with category-colored dots (active state takes the category accent)
+  - Cards: category-accent system via CSS vars (--accent/-soft/-glow) — hover border+glow in category color, price + rating overlays on image, 2-line desc, duration/difficulty meta, "View Program →" CTA that fills with accent on hover
+  - Active-filters summary row with Clear all; shimmer skeletons replace full-screen spinner
+- Mobile placeholder fork removed; responsive 3/2/1; mobile scrollWidth = 390; TypeScript 0 errors; Apollo logic unchanged
+
+## Program Detail Redesign + Honest Data (2026-06-10)
+
+- /course/detail redesigned with wd-*/pd-* system; ALL logic untouched (Stripe checkout via createCourseCheckoutSession for paid, purchaseCourse for free, completeLesson, review flow)
+- REMOVED FAKE "Included" card ('PDF training logs', 'Community Discord', 'Certificate' — none exist on backend; violated no-fake-content rule)
+- Hero: cinematic thumbnail bg, "← Programs" back pill, category-accent + difficulty + rating chips, editorial title, real meta (weeks · sessions · enrolled count from purchasedMembers.length)
+- Sticky sidebar: price card with gradient Enroll CTA ("Secure Stripe checkout" note for paid, "✓ Enrolled" state), NEW progress card for enrolled members (completed/total + animated bar from real getLessonProgress), Program Summary stats (duration/sessions/category/level dot)
+- Curriculum: week headers (W01 badge + divider line), lesson rows with sequential number → green ✓ when completed, duration, Mark done button; verified getCourse populates lessons (course.service.ts:36-41) — dev DB simply has none seeded, honest "coming soon" empty state
+- Reviews: enrollment-gated form (mirrors backend course-review rule) + already-reviewed note; errors surface graphQLErrors message
+- Mobile placeholder fork removed; responsive; mobile scrollWidth = 390; TypeScript 0 errors
+
+## Nutrition Plan Per-User Isolation Fix (2026-06-10)
+
+- BUG: nutrition plan form + AI recommendation were cached in localStorage under GLOBAL keys (gymora_nutrition_form/result) — a plan generated by one account appeared for every other account on the same browser
+- FIX: keys are now namespaced per member (`gymora_nutrition_form_<memberId>`), state loads via useEffect when user._id becomes available, save effects guard on storageReady; legacy global keys are removed on load
+- Audited remaining localStorage usage: login/logout timestamps and locale are intentionally global; JWT handled by auth lib — no other per-user leaks
+
+## MyPage Role-Based Menu Cleanup (2026-06-10)
+
+- Trainers no longer see consumer-only sections: My Programs (purchased), Nutrition, Progress, Subscription — new `hideForTrainer` flag + shared isItemVisible() predicate; empty sections (e.g. Health) collapse automatically
+- Category GUARD: allowed keys computed per role; direct URL hits like ?category=subscription fall back to dashboard for trainers
+- Menu regrouped: "Studio" (trainer content tools) / "Training" (user purchased programs) / Activity / Health; labels unified to Programs naming (My Programs, Create Program — sidebar, headers, submit button, empty-state link)
+- Dashboard is role-aware: trainers see studio stats (Workouts Published / Programs / Likes / Articles — JWT payload fields, memberFollowers not in payload) and Create Workout / Create Program / Write Article quick actions; consumers keep calories/progress stats, Recommendations and subscription summary (both now hidden for trainers); consumer quick actions now open in-page categories instead of legacy /nutrition /progress routes
+- Sidebar readability: items 13→14px, weight 600/700, brighter inactive color
+- TypeScript 0 errors
+
+## My Articles + Create Workout/Program Forms (2026-06-10)
+
+### My Articles
+- Header: violet eyebrow + live "{N} published" count + gradient "+ Write Article" shortcut
+- Rows reuse cm-row system with per-category accents (left-bar hover, thumb zoom, date, like/views/comments, hover arrow); like-refetch logic untouched; nt-empty state; mobile fork removed
+
+### Create Workout form (mypage)
+- wd-form-card; Target Muscle is now PRESET CHIPS (Chest…Full Body — exact values the /workout filter expects, prevents free-text drift like "legs day"); difficulty as wl-seg control; "Publish Workout →" gradient submit
+
+### Create Program form (mypage)
+- Category as accent-dot buttons (Strength orange / Cardio cyan / Yoga violet / Mobility green / Nutrition peach — same colors as the catalog), difficulty wl-seg, price+duration glass inputs, orange-gradient "Publish Program →"
+- Both forms: Studio eyebrow headers; create mutations untouched
+- TypeScript 0 errors
+
+## My Profile + Write Article Premium Redesign (2026-06-10)
+
+### My Profile
+- updateMember + JWT refresh flow untouched; added uploading/saving busy states ("Uploading...", "Saving...")
+- FIX: image upload errors were silently swallowed (empty catch) — now surfaces an alert; avatar dims while uploading
+- Design: nt-head header with eyebrow, wd-form-card sections, 88px avatar with cyan ring + glow, ghost upload button (nt-markall), wd-input/wd-textarea fields, gradient submit; mobile placeholder fork removed
+
+### Write Article (Teditor)
+- createBoardArticle + addImageBlobHook upload untouched
+- WHITE MUI Select/TextField replaced: category as cl-cat-btn accent-dot buttons (added missing SUCCESS_STORY option), title as wd-input, both in a glass card
+- Toast UI Editor switched to dark theme (dark CSS + theme="dark") in a framed glass container; initialValue 'Type here' junk → empty with placeholder
+- FIX: error handler always showed INSERT_ALL_INPUTS — now surfaces actual graphQLErrors message; empty-content check strips HTML tags (was fooled by '<p><br></p>'); publishing busy state; title moved to React state (was a mutable memo ref)
+- WriteArticle wrapper: violet eyebrow header; mobile fork removed
+- TypeScript 0 errors
+
+## Community Detail Premium Redesign + Markdown Fix (2026-06-10)
+
+- All logic untouched (article query, optimistic like, comment create/delete with refetch, pagination)
+- Editorial layout: "← Community" back pill, category-accent chip, full date + computed "{N} min read" (words/200), clamp title, author card with avatar ring + USER/TRAINER type chip (routes by memberType — trainers → /trainer/detail), framed hero image, glass stats bar (like + bold views/comments)
+- Comments → wd-comment system with wd-form-card input (Post disabled when empty), own-comment delete via hover-style nm-del
+- MAJOR FIX — TViewer: was a hardcoded WHITE box and seeded content's escaped markdown (\\#, \\-) rendered literally. Now: toastui dark theme CSS + theme="dark", glass dark container, and escape-stripping (\\X → X) so headings/lists render properly
+- Emojis (👁 💬) removed; mobile placeholder fork removed; TypeScript 0 errors
+
+## Auth Page (Login/Signup) Premium Redesign (2026-06-10)
+
+- logIn/signUp flow untouched; added busy state (double-submit guard, "Please wait...")
+- Split-screen layout (au-* classes): LEFT — hero-athlete photo panel with duotone tint + grain, brand mark, editorial quote ("Every session counts. / Make yours today." with gradient line); RIGHT — form panel
+- Form: dynamic heading (Welcome back / Join Gymora) + honest subcopy ("every workout is free from day one"), wl-seg Login/SignUp tabs, wd-input fields with mono labels, gradient submit (lp-btn-primary) with disabled opacity, switch link
+- Visual panel hidden ≤920px; mobile placeholder fork removed; mobile scrollWidth 390; TypeScript 0 errors
+
+## Subscription Premium Polish + Honest Features (2026-06-10)
+
+- SubscriptionContent (mypage): Stripe flow untouched (initiatePayment → CardElement modal → confirmCardPayment → createSubscription)
+- HONESTY FIX: plan feature lists contained unbacked claims ('Advanced analytics', 'Priority trainer access', '1-on-1 monthly review', 'Early program access', 'Basic nutrition tracking') — replaced with the landing PricingSection lists (real capabilities), keeping landing/mypage copy identical
+- Header: orange eyebrow + "Invest in Performance" with gradient word
+- Active plan banner upgraded: green gradient card, pulsing "Active Plan" live chip, NEW computed "{N} days left" (from expiresAt) + expiry date
+- Payment history: section head with count, nm-row hover cards, status as colored chip (PAID green / PENDING orange / other gray), amount emphasized
+- TypeScript 0 errors
+
+## MyPage Sidebar v2 — Split Cards (2026-06-10)
+
+- User feedback: sidebar felt narrow/simple. Rebuilt as mp-* class system:
+- Column 240→292px; sidebar is now TWO separate glass cards (identity + navigation) with gap — layered look instead of one monolith; whole stack sticky with hidden internal scroll (like td-sticky)
+- Identity card: taller cover (76px, stronger glows + grain), 78px avatar with hover scale+glow, rating row now shows "New trainer" instead of "★ —" when unrated, NEW 3-column mini-stats strip with hairline dividers (trainer: Workouts/Programs/Articles; user: Workouts/Programs/Points), spec chips, socials, glowing View Public Profile
+- Nav card: section labels with gradient hairline tails (mp-nav-label), 30px icon tiles with borders; CSS hover (slide + tile lights up — previously NO hover at all) and active state (gradient + inset ring + glowing left bar + glowing icon tile); Become Trainer green variant; unread badge
+- TypeScript 0 errors
+
+- Header → nt-head pattern: orange eyebrow ("Fuel your training" / "Your plan"), restyled actions — ghost Recalculate, "AI Scan Food" green gradient button with pulsing dot (nm-scan-btn), gradient + Log Meal (wd-btn)
+- Inputs upgraded to glass style (rgba bg, 11px radius) across plan calculator + meal form; meal form → wd-form-card with wd-btn
+- Today's intake progress bars: 3→5px with per-macro gradient fill + soft glow, springy width transition
+- Recent Meals: section head with live count, nm-row cards (hover slide + cyan border, delete ✕ appears on hover with red hover state), calories emphasized
+- Empty state → nt-empty pattern; AI history sidebar: sticky (top 86px), green-tinted border, mono "AI Scan History" label
+- Legacy standalone /nutrition page replaced with redirect → /mypage?category=nutrition
+- All logic untouched (per-user localStorage plan, GROQ scan flow, meal CRUD); TypeScript 0 errors
+
+## Progress Tracker Premium Redesign (2026-06-10)
+
+- ProgressContent restyled (pg-* classes); addProgress/refetch logic untouched; backend sort verified (progressDate: -1, newest first)
+- NEW summary cards computed from real entries: Current Weight, Total Change (▼/▲ delta chip — green down / orange up), latest Body Fat, Entries count
+- NEW weight trend chart: dependency-free inline SVG sparkline (gradient fill + line + endpoint dot) over all entries oldest→newest, with date range label
+- Vertical timeline: gradient connector line, node dots (latest glows), per-entry delta chip vs previous entry, "Latest" chip, metric chips (CHEST/WAIST/HIPS/FAT), styled note
+- Form: glass card with focus-ring wd-input fields, gradient buttons; toggle label (+ Log Progress / Close)
+- Legacy standalone /progress page replaced with redirect → /mypage?category=progress
+- TypeScript 0 errors
+
+## Notifications Premium Redesign (2026-06-10)
+
+- mypage Notifications section restyled with nt-* classes; markNotificationRead logic untouched
+- Header: pulsing "{N} unread" chip + All/Unread segmented filter (client-side) + NEW "Mark all read" (Promise.all over existing markRead mutation, then refetch)
+- Items: per-type colored icon tile via CSS vars (SYSTEM gray ◉ / WORKOUT cyan ◈ / NUTRITION orange ◑ / SUBSCRIPTION violet ◇ / CHAT green ◬ — matches backend NotificationType enum), unread: cyan left bar + hover slide, read: dimmed; relative time (now/5m/3h/2d ago, then date); type label in matching color
+- Empty states: "All caught up" (unread filter) / "No notifications yet"
+- TypeScript 0 errors
+
+- ChatContent (mypage Messages) restyled with ct-* classes; ALL Socket.IO logic untouched (chat:message listener, optimistic conversation reorder, send via socket.emit)
+- Shell: glass 300px+room grid, radial cyan wash in room background
+- Sidebar: "Messages" + Live/Offline mono chip (pulsing dot); conversation rows with avatar ring, online dot, last-message time (today→HH:MM, else date), bold nick, glowing unread dot, active gradient + cyan bar
+- Room: header with partner avatar + Online chip; DAY SEPARATORS (Today / Yesterday / date pills) computed between messages; bubbles — mine: cyan gradient + glow, theirs: glass; per-message fadeInUp; times in mono
+- Input bar: focus-ring input + gradient "Send →" pill with disabled state; styled connecting banner; richer empty state
+- Responsive ≤860px: sidebar stacks above room (220px list)
+- Legacy standalone /chat page (old non-socket duplicate UI) replaced with redirect → /mypage?category=chat
+- TypeScript 0 errors
+
+### Role-aware hero CTAs (2026-06-10)
+- "Get Started Free" no longer shown to logged-in members. Hero badge + both CTAs adapt via userVar:
+  - Guest: "{N}+ workouts available" / Get Started Free → /account/join / Browse Programs → /course
+  - USER: "Welcome back, {nick}" / Continue Training → /workout / My Dashboard → /mypage
+  - TRAINER: "Welcome back, {nick}" / Open Your Studio → /mypage / My Public Profile → /trainer/detail?id=self
+  - ADMIN: Open Admin Panel → /_admin/users / Browse Platform
+- Cyan brand dot after "gymora" wordmark removed on user request (navbar + footer + related CSS)
+
+### Navbar size + creative logo pass (2026-06-10)
+- Sizes up: links 14→15px, nick 14→15px, Log out 12.5→13.5px, Log in 13→14.5px, Get Started 12.5→14px w/ bigger padding, wordmark 19→22px, mark 30→35px
+- Logo hover effects: G mark morphs square→circle (border-radius transition) while rotating -10° and scaling, double-layer glow, diagonal shine sweep (gnavShine keyframe via ::after); wordmark letter-spacing relaxes; cyan dot (now a span) pulses (gnavDot keyframe)
+
+### Sidebar profile card premium redesign (2026-06-10)
+- New "ID card" header: gradient cover band (dual radial glows + grain), avatar overlapping with cyan ring + glow
+- Trainers: GET_TRAINER_BY_MEMBER_ID fetched for own profile → "Verified Trainer" green chip (or role chip), ★ rating (+count) and experience row, top-3 specialization chips, top-2 social links with ↗, "View Public Profile →" button to /trainer/detail
+- Section labels: 9px gray → 10px/700 cyan-tinted mono with wider tracking
+
+## Community Page Redesign + Logic Fixes (2026-06-10)
+
+### Logic fixes
+- "All Posts" tab was wired to FITNESS_TIPS (mislabeled — never showed everything). Now a real ALL tab: search {} (backend ArticleSearch.articleCategory is optional — verified board-article.input.ts)
+- Default sort direction was ASC (oldest first!) → DESC newest first
+- Added sort dropdown: Newest / Most Viewed / Most Liked (backend whitelist ['createdAt','articleViews','articleLikes'] verified)
+- Frontend BAISearch type fixed to mirror backend: articleCategory now optional, memberId? added
+- Removed emojis (👁 💬) from meta — replaced with text stats
+- Excerpts now strip markdown symbols (#, **, \\#) in addition to HTML
+
+### Design
+- wl-hero with violet eyebrow, "Knowledge from the floor" gradient title, live posts badge, gradient Write Article button (TRAINER/ADMIN) in hero
+- Glass console: category buttons with per-category accent dots (Fitness Tips cyan / Nutrition orange / Workout Guide violet / Challenge red / Success Story green) + sort select
+- Article rows (cm-*): accent left-bar on hover, thumb zoom, author avatar+nick+date, 2-line excerpt, like/views/comments stats, hover-reveal arrow; rows stack on mobile
+- Skeleton rows; styled empty state; mobile placeholder fork removed; scrollWidth 390; TypeScript 0 errors
+
+### Sticky sidebar overlap fix (2026-06-10)
+- Bug: .td-profile was sticky while .td-people-card scrolled in flow → cards visually overlapped during scroll (both semi-transparent)
+- Fix: new .td-sticky wrapper makes profile + people cards stick together as one unit (top: 80px, max-height: calc(100vh - 96px) with hidden internal scroll for tall content); applied on /trainer/detail and /member; static on ≤1024px

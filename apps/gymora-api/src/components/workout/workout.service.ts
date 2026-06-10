@@ -113,7 +113,7 @@ export class WorkoutService {
 		return updated;
 	}
 
-	public async getWorkouts(input: WorkoutsInquiry): Promise<Workouts> {
+	public async getWorkouts(input: WorkoutsInquiry, memberId?: ObjectId): Promise<Workouts> {
 		const { page, limit, sort, direction, search } = input;
 		const match: Record<string, any> = { deletedAt: { $exists: false } };
 
@@ -149,6 +149,15 @@ export class WorkoutService {
 			.exec();
 
 		if (!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		// Attach meLiked for authenticated user
+		if (memberId && result[0].list?.length) {
+			for (const workout of result[0].list) {
+				const likeInput = { memberId, likeRefId: workout._id, likeGroup: LikeGroup.WORKOUT };
+				workout.meLiked = await this.likeService.checkLikeExistence(likeInput);
+			}
+		}
+
 		return result[0];
 	}
 
