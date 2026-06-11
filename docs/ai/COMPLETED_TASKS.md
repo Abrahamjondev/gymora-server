@@ -1052,3 +1052,26 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 - Verified live: workout detail embeds the YouTube iframe; program detail shows the 4-week curriculum with working Watch → video for creator/admin/enrolled.
 - Fixed a "No data found!" popup on program detail: CreatorCard's GET_MEMBER (and course reviews/lesson-progress queries) now use skipGlobalError + onError so legitimately-empty/missing reads don't pop the global error.
 - Data-only video population (no backend change); frontend tsc clean, production build clean, all temp accounts removed.
+
+## Branded SweetAlert2 Popups (2026-06-11)
+
+- All popups/toasts (login errors, confirms, success, delete prompts, etc.) used the default white SweetAlert which clashed with the dark theme. Added a global .swal2-* theme in app.scss: dark glass popup (gradient #18181a, 1px border, radius 18px, blurred backdrop), Hanken Grotesk text, cyan-gradient confirm button + ghost cancel, brand-recolored icons (success green / error red / warning orange / question+info cyan), cyan timer progress bar, dark toast, and a smooth scale+fade open/close (replacing the bounce).
+- sweetAlert.ts cleaned: removed hardcoded ugly red/grey button colors and the dark text color (invisible on dark), removed animate.css bounce usages; sweetConfirmAlert now uses a red "swal-danger" confirm (destructive) with Yes/Cancel labels; login confirm uses the cyan button.
+- Verified live: logout confirm renders fully themed (glass popup, cyan ? icon, red Yes + ghost Cancel, blurred backdrop). Global theme auto-applies to every existing Swal call.
+- tsc clean, production build clean
+
+## Program Likes (purchasers only) + Purchase Count Social Proof (2026-06-11)
+
+### Backend (new feature — LikeGroup.COURSE already existed, review purchase-gate already existed)
+- Course schema: added courseLikes (default 0); DTO: added courseLikes + meLiked
+- course.module imports LikeModule; CourseService injects LikeService
+- NEW likeTargetCourse(memberId, courseId) mutation: verifies the member is in purchasedMembers (else BadRequest "Only members who purchased this program can like it"), toggles the like (LikeGroup.COURSE), $inc courseLikes, returns meLiked — prevents non-buyers from tanking a program
+- getCourse now takes auth member (WithoutGuard) and returns meLiked; getCourses adds lookupAuthMemberLiked + returns courseLikes; backfilled courseLikes:0 on existing courses
+- Review-only-by-purchasers was ALREADY enforced (review.service hasPurchased) — confirmed, no change
+
+### Frontend
+- LIKE_TARGET_COURSE mutation; courseLikes + meLiked added to GET_COURSE/GET_COURSES; purchasedMembers added to GET_COURSES
+- Program detail: like button in the price card (purchasers only; non-buyers see a read-only ♥ count with tooltip), "members joined" social-proof block, likes shown in hero meta
+- Program list cards: show enrolled count (green) + likes (red) as trust signals so popular programs stand out
+- Verified live (API + browser): non-purchaser like BLOCKED, purchaser like 0→1 and toggles back, counts render on detail + list
+- backend tsc clean, frontend tsc clean, production build clean, test data removed

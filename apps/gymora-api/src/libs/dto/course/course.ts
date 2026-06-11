@@ -2,6 +2,7 @@ import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 import { type ObjectId } from 'mongoose';
 import { CourseCategory, CourseDifficulty } from '../../enums/gymora.enum';
 import { Lesson } from '../lesson/lesson';
+import { MeLiked } from '../like/like';
 
 @ObjectType()
 export class Course {
@@ -34,7 +35,11 @@ export class Course {
 	@Field(() => Int, { nullable: true })
 	courseRatingCount?: number;
 	@Field(() => Int, { nullable: true })
+	courseLikes?: number;
+	@Field(() => Int, { nullable: true })
 	courseRank?: number;
+	@Field(() => [MeLiked], { nullable: true })
+	meLiked?: MeLiked[];
 	@Field(() => Date)
 	createdAt: Date;
 	@Field(() => Date)

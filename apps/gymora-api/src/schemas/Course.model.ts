@@ -15,6 +15,7 @@ const CourseSchema = new Schema(
 		purchasedMembers: [{ type: Schema.Types.ObjectId, ref: 'Member' }],
 		courseRating: { type: Number, default: 0 },
 		courseRatingCount: { type: Number, default: 0 },
+		courseLikes: { type: Number, default: 0 },
 		courseRank: { type: Number, default: 0 },
 		deletedAt: { type: Date },
 	},

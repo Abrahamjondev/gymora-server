@@ -9,6 +9,7 @@ import LessonProgressSchema from '../../schemas/LessonProgress.model';
 import { CourseResolver } from './course.resolver';
 import { CourseService } from './course.service';
 import { AuthModule } from '../auth/auth.module';
+import { LikeModule } from '../like/like.module';
 
 @Module({
 	imports: [
@@ -21,6 +22,7 @@ import { AuthModule } from '../auth/auth.module';
 			{ name: 'LessonProgress', schema: LessonProgressSchema },
 		]),
 		AuthModule,
+		LikeModule,
 	],
 	providers: [CourseResolver, CourseService],
 	exports: [CourseService],

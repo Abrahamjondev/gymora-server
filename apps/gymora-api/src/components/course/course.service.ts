@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { Course, Courses } from '../../libs/dto/course/course';
 import { Member } from '../../libs/dto/member/member';
 import { Trainer } from '../../libs/dto/trainer/trainer';
@@ -10,6 +10,10 @@ import { LessonProgress } from '../../libs/dto/lesson/lesson.progress';
 import { CourseInput, CourseUpdate, CoursesInquiry } from '../../libs/dto/course/course.input';
 import { Message } from '../../libs/enums/common.enum';
 import { Direction } from '../../libs/enums/common.enum';
+import { LikeService } from '../like/like.service';
+import { LikeGroup } from '../../libs/enums/like.enum';
+import { LikeInput } from '../../libs/dto/like/like.input';
+import { lookupAuthMemberLiked, shapeIntoMongoObjectId } from '../../libs/config';
 
 @Injectable()
 export class CourseService {
@@ -20,6 +24,7 @@ export class CourseService {
 		@InjectModel('Lesson') private readonly lessonModel: Model<Lesson>,
 		@InjectModel('LessonProgress') private readonly progressModel: Model<LessonProgress>,
 		private readonly configService: ConfigService,
+		private readonly likeService: LikeService,
 	) {}
 
 	public async createCourse(memberId: string, input: CourseInput): Promise<Course> {
@@ -30,7 +35,7 @@ export class CourseService {
 		return result;
 	}
 
-	public async getCourse(courseId: string): Promise<Course> {
+	public async getCourse(courseId: string, memberId?: ObjectId | null): Promise<Course> {
 		const course = await this.courseModel.findById(courseId).exec();
 		if (!course) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
 		const lessons = await this.lessonModel
@@ -39,10 +44,37 @@ export class CourseService {
 			.exec();
 		const result = course.toObject() as Course;
 		result.lessons = lessons;
+		// Auth member's like state for this program
+		if (memberId) {
+			result.meLiked = await this.likeService.checkLikeExistence({
+				memberId,
+				likeRefId: course._id,
+				likeGroup: LikeGroup.COURSE,
+			});
+		}
 		return result;
 	}
 
-	public async getCourses(input: CoursesInquiry): Promise<Courses> {
+	/** Like a program — restricted to members who purchased it (anti rating-abuse). */
+	public async likeTargetCourse(memberId: ObjectId, courseId: string): Promise<Course> {
+		const target = await this.courseModel.findOne({ _id: courseId, deletedAt: { $exists: false } }).exec();
+		if (!target) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		const purchased = (target.purchasedMembers ?? []).some((id: any) => id.toString() === memberId.toString());
+		if (!purchased) throw new BadRequestException('Only members who purchased this program can like it.');
+
+		const input: LikeInput = { memberId, likeRefId: target._id, likeGroup: LikeGroup.COURSE };
+		const modifier = await this.likeService.toggleLike(input);
+		const result = await this.courseModel
+			.findByIdAndUpdate(courseId, { $inc: { courseLikes: modifier } }, { new: true })
+			.exec();
+		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		const obj = result.toObject() as Course;
+		obj.meLiked = await this.likeService.checkLikeExistence({ memberId, likeRefId: target._id, likeGroup: LikeGroup.COURSE });
+		return obj;
+	}
+
+	public async getCourses(input: CoursesInquiry, memberId?: ObjectId | null): Promise<Courses> {
 		const { page, limit, sort, direction, search } = input;
 		const match: Record<string, any> = { deletedAt: { $exists: false } };
 
@@ -65,7 +97,7 @@ export class CourseService {
 				{ $sort: sortStage },
 				{
 					$facet: {
-						list: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+						list: [{ $skip: (page - 1) * limit }, { $limit: limit }, lookupAuthMemberLiked(memberId)],
 						metaCounter: [{ $count: 'total' }],
 					},
 				},

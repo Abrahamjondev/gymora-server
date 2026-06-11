@@ -21,15 +21,31 @@ export class CourseResolver {
 		return await this.courseService.createCourse(memberId.toString(), input);
 	}
 
+	@UseGuards(WithoutGuard)
 	@Query(() => Course)
-	public async getCourse(@Args('courseId') courseId: string): Promise<Course> {
-		return await this.courseService.getCourse(courseId);
+	public async getCourse(
+		@Args('courseId') courseId: string,
+		@AuthMember('_id') memberId: ObjectId,
+	): Promise<Course> {
+		return await this.courseService.getCourse(courseId, memberId);
 	}
 
 	@UseGuards(WithoutGuard)
 	@Query(() => Courses)
-	public async getCourses(@Args('input') input: CoursesInquiry): Promise<Courses> {
-		return await this.courseService.getCourses(input);
+	public async getCourses(
+		@Args('input') input: CoursesInquiry,
+		@AuthMember('_id') memberId: ObjectId,
+	): Promise<Courses> {
+		return await this.courseService.getCourses(input, memberId);
+	}
+
+	@UseGuards(AuthGuard)
+	@Mutation(() => Course)
+	public async likeTargetCourse(
+		@Args('courseId') courseId: string,
+		@AuthMember('_id') memberId: ObjectId,
+	): Promise<Course> {
+		return await this.courseService.likeTargetCourse(memberId, courseId);
 	}
 
 	@UseGuards(AuthGuard)
