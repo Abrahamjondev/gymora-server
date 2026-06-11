@@ -873,3 +873,182 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
   - /trainer/detail profile like + trainer review → SYSTEM notifications to the trainer's member id
   - /member profile like → SYSTEM notification to the member
 - Frontend tsc clean; all 6 touched pages smoke-tested 200 on dev server
+
+
+## Mobile Readiness Audit + Hamburger Menu (2026-06-10)
+
+- Full mobile sweep (Playwright, iPhone 13 viewport, real entity IDs, authenticated): 22 routes — 0 horizontal overflows, all pages render the real responsive UI (no leftover mobile stubs; layout mobile branches render the same components)
+- CRITICAL GAP FIXED: ≤768px hid .gnav-links with no replacement — mobile users had no site navigation. Added premium hamburger menu to GymNavbar:
+  - Animated 3-line burger (morphs to X), glass button matching gnav system
+  - Fixed full-width slide-down panel under the 62px bar (max-height+opacity transition): bold 17px nav links with active state + arrow, guest footer (Log in / Get Started), user footer (My Page chip with avatar + red Log out)
+  - Auto-closes on route change (useEffect on router.asPath); bar gets solid background while open
+  - Top bar simplified on mobile: guest buttons + logout/divider hidden (moved into menu), nick ellipsized at 96px
+- Verified live: guest + logged-in menu screenshots, in-menu navigation closes panel, 0px overflow with menu open, desktop unchanged (burger hidden, links visible)
+- tsc clean; production build clean (124 static pages); throwaway mobiletest1 user removed from DB
+
+### Trainer + Admin mobile verification & responsive admin drawer (2026-06-10)
+- Extended mobile sweep with temp TRAINER and ADMIN accounts: 8 trainer mypage categories (myWorkouts/createWorkout/trainerCourses/createCourse/myArticles/writeArticle/myProfile/dashboard) + 5 admin pages — 0 overflows, 0 console errors
+- Admin panel fix: permanent 280px MUI Drawer ate 72% of a 390px screen. Now responsive (useMediaQuery ≤768px): temporary drawer hidden by default, MenuIcon burger in full-width AppBar opens it, auto-closes on route change; content gets 64px top padding + minWidth 0 on mobile; desktop unchanged (permanent 280px, no burger — verified)
+- Live-verified: drawer open → Workouts accordion → List → navigates to /_admin/workouts and drawer closes; production build clean; temp accounts removed from DB
+
+## Article Edit/Delete + Final Dead-Code Cleanup (2026-06-10)
+
+- NEW: My Articles now has full owner Edit/Delete (backend updateBoardArticle was never wired):
+  - Edit button → /mypage?category=writeArticle&articleId=… → WriteArticle fetches GET_BOARD_ARTICLE and renders Teditor in edit mode (title/category/image prefilled, content injected via setHTML polling effect since Toast UI load event was unreliable)
+  - BoardArticleUpdate has no articleCategory field (verified) → category locked in edit mode with "fixed after publish" label
+  - Delete button → confirm → updateBoardArticle {articleStatus: DELETE} → list refetch; backend decrements memberArticles
+  - E2E verified via Playwright: prefill → save → list shows new title → delete → 0 active articles in backend
+- calculateAnalytics deliberately NOT wired: getNutritionRecommendation (already wired) returns a superset (BMI+BMR+TDEE+macros+tips); the analytics endpoint is redundant — removed its unused frontend export instead
+- Chat SEND_MESSAGE mutation confirmed redundant: socket gateway persists via chatService.sendMessage on chat:message (verified) — export removed
+- Deleted 8 dead legacy components (LayoutFull, Footer, mypage/Article, admin/cs ×3, admin/properties/PropertyList, admin/community/CommunityArticleList) and 8 unused apollo exports (SEND_MESSAGE, IMAGE_UPLOADER, IMAGES_UPLOADER, VIDEO_UPLOADER, GET_ONLINE_STATUS, GET_TRAINERS, GET_TRAINER, CALCULATE_ANALYTICS); legacy /property /agent /_admin redirect pages kept intentionally
+- tsc clean, production build clean, test data removed from DB
+
+## Trainer Messaging Entry + Creator Cards (2026-06-10)
+
+- NEW: users can now start a chat with any trainer/member from their profile:
+  - "Message" button on /trainer/detail and /member profiles (td-actions) → /mypage?category=chat&partner=<memberId>
+  - ChatContent deep link support: ?partner= auto-opens that conversation; if no history exists, GET_MEMBER fetches partner info and a stub conversation row ("Start the conversation") is injected so the room opens immediately; first sent message persists it server-side (socket gateway → chatService.sendMessage, verified earlier)
+- NEW reusable CreatorCard (libs/components/common/CreatorCard.tsx): avatar + name + role chip + workouts/followers/likes mini-stats + View Profile (role-aware routing) + Message buttons
+  - /workout/detail sidebar → "Coach" card via workout.memberId + GET_MEMBER (backend getWorkout has no member lookup — verified)
+  - /course/detail sidebar → "Your Trainer" card via course.trainerId → GET_TRAINER (restored to apollo; WithoutGuard verified) → memberId → GET_MEMBER; shows trainer ★rating and experience chips
+- Like persistence investigated (user report "like reverts after refresh"): could NOT reproduce — backend meLiked verified via raw API (list+detail), browser repro on /workout and /workout/detail both keep the filled heart after reload, Authorization header confirmed present on first request. Current code is correct; awaiting concrete repro page if it recurs.
+- E2E verified: trainer detail → Message → chat opens with stub conv → message sent and visible; both detail cards render; mobile overflow 0 on all three pages; production build clean; test user + chat row removed from DB
+
+## Production Polish: Error Pages, Titles, README (2026-06-10)
+
+- Custom dark 404 ("This page skipped leg day.") and 500 ("We dropped the barbell.") pages — previously Next's white defaults clashed with the brand; G-mark logo, mono error chip, gradient CTA buttons; verified rendering live
+- Per-page <title>/meta titles: LayoutBasic route map (Workout Library / Training Programs / Trainers / Community / My Page / etc. — Gymora), landing "Gymora — Elite Training Platform"; verified via curl on 4 routes
+- README.md rewritten from the stock create-next-app template to a real project README: feature overview per role, tech stack table, env var table (matching next.config.js mapping), scripts, structure, design system summary — no fake badges/claims
+- tsc clean; production build clean
+
+## Hardcoded-Data Audit (2026-06-10)
+
+- User suspected landing/trainers data might be hardcoded. Full audit of all 8 homepage components + /trainer page:
+  - EliteTrainers, HotWorkouts, TopCourses, CommunityPulse, HeroSection counters, /trainer roster — ALL DB-driven via GraphQL (verified side-by-side: DB top-4 trainers by memberRank = rendered names in same order; DB totals 42/21 = rendered 42+/21+)
+  - Static content that is design copy, not data: marquee discipline names, HowItWorks steps, PricingSection plan copy (honest-verified earlier)
+- ONE fake metric found and fixed: hero "100% Free Workouts" (false — course-locked paid workouts exist) → replaced with real "31+ Programs" stat from GET_COURSES metaCounter with count-up animation; "—" placeholder when empty
+- tsc clean, production build clean, 0 console errors
+
+## Trainer Card Nickname + Chat Read Receipts (2026-06-10)
+
+- Trainer roster cards now show @nickname under the full name (tr-card-nick, cyan mono) so users can map "Emma Johnson" ↔ emma_wellness at a glance (clarified earlier confusion that seeded trainers "weren't showing" — they were, by full name, paginated 6/page)
+- Chat read receipts: sent messages show ✓ (sent, gray) → ✓✓ (read, cyan) using the existing Chat.isRead field (already returned by getMessageHistory; backend marks incoming read when the partner opens the conversation — no backend change)
+- Added light 6s polling while a conversation is open (pauses on hidden tab) so receipts and partner presence update live without a backend chat:read socket event
+- E2E verified with two real accounts (emma_wellness trainer + temp user): send → ✓; partner opens → poll picks up → ✓✓ (read-styled). tsc clean, production build clean, test data removed
+
+## Admin Menu Cleanup + Chat UX (2026-06-10)
+
+- Admin mypage menu trimmed to essentials (Dashboard, My Profile, Notifications, Messages): My Articles/Write Article changed trainerOrAdmin→trainerOnly; My Programs/Nutrition/Progress/Subscription changed hideForTrainer→userOnly (so admins are excluded too). Verified live: temp admin sees exactly those 4 items
+- Chat scroll bug fixed: messagesEndRef.scrollIntoView() scrolled the WHOLE page on open/new message; replaced with scoped msgsBoxRef.scrollTop=scrollHeight, and added min-height:0 to .ct-room/.ct-msgs (flexbox overflow fix) so only the messages panel scrolls. Verified: window.scrollY stays 0 after 18 messages, panel auto-scrolls to bottom
+- Messages nav now shows an unread badge (green mp-unread pill, mirroring Notifications): GET_CONVERSATIONS in mypage (pollInterval 15s) → count of conversations with unread incoming last message. Verified: receiver sees "1" badge after partner sends
+- Side cleanup: removed 3 orphaned libs/types/property/* files (referenced deleted property.enum, caused tsc errors)
+- tsc clean, production build clean, temp accounts removed
+
+## Chat Badge Clear + Presence Polish (2026-06-10)
+
+- Unread message badge now clears immediately when a conversation is opened (was only clearing on full refresh): ChatContent gets an onConversationsRead callback; on opening a conversation it optimistically sets isRead and calls back so mypage refetches GET_CONVERSATIONS and the sidebar mp-unread badge updates at once
+- Online presence (already backend-implemented via in-memory socket Set: registerConnection on connect, unregister on disconnect, getPartnerOnlineStatus) made always-visible and creative in the chat room header: avatar online dot + "● Active now" (green, pulsing ring) when online / "Offline" (gray) when not; refreshed by the existing 6s poll
+- Verified live with two socket-connected accounts: A's badge "1" → opens chat → CLEARED (no refresh); A sees B "Active now" while B connected → "Offline" within the poll window after B disconnects
+- NOTE for user: true "last seen at <time>" is NOT possible without a backend change — the server only keeps a live online/offline Set, no lastSeen timestamp is persisted. Offered to add a lastSeen field on disconnect if permitted.
+- tsc clean, production build clean, test data removed
+
+## Navbar Logo Spin + Logout Confirm (2026-06-10)
+
+- Navbar logo "G" now does a creative 3D coin-flip spin on hover (gnavLetterFlip: 720deg rotateY with a scale pop, mark has perspective + span backface-hidden) on top of the existing square→circle morph
+- Log out now asks "Do you want to log out?" via sweetConfirmAlert before logging out — wired to BOTH desktop (.gnav-logout) and mobile (.gnav-mobile-logout) buttons through a shared logoutHandler
+- Verified live: hover applies gnavLetterFlip; logout click shows confirm, Cancel keeps session, OK logs out
+- tsc clean, production build clean
+
+## Subscription = USER-only (data + UI cleanup) (2026-06-10)
+
+- DB cleanup: deleted all PENDING subscriptions (0 found) and all subscriptions belonging to non-USER members (3 removed: ADMIN testuser1 MONTHLY, TRAINER Abraham YEARLY, ADMIN Ibrohimjon YEARLY) — subscriptions now only ever belong to USER members; 0 subscriptions remain (all existing ones were on admin/trainer accounts)
+- Dashboard subscription summary gate tightened: was `memberType !== 'TRAINER'` (so admins still saw it) → now `memberType === 'USER'` only
+- Menu item already userOnly (earlier change) + category guard verified: admin hitting ?category=subscription falls back to Dashboard; ADMIN & TRAINER both show no Subscription menu item and no dashboard subscription mention (verified live)
+- tsc clean, production build clean, temp test admin removed
+
+## Trainer Sidebar Fit — No More Scroll (2026-06-10)
+
+- Trainer mypage sidebar overflowed the viewport (had to scroll inside the sticky column). Fixed creatively without dropping any feature:
+  - Merged the 3 standalone "Create" nav rows into inline "+" actions on their parent rows: My Workouts +, My Programs +, My Articles + (Studio section 6 rows → 3). The + is a glowing cyan pill that rotates on hover and highlights when its create page is active; createWorkout/createCourse/writeArticle kept in allowedKeys so the guard still permits them, parent row also shows active on its create page
+  - Compacted the identity card (cover 76→58, avatar 78→62, tighter margins/paddings on name/stats/specs/socials/button) and nav spacing
+- Result: sidebar 869px → 771px; fits without scroll at ≥820px viewport (was overflowing even on tall screens); 768px tiny-laptop still ~51px over but far better
+- Verified live: + buttons navigate (Create Workout/Program, Write Article), desktop fits, mobile 0 overflow and + works
+- tsc clean, production build clean
+
+## Nutrition Split into Plan + Meal Tracker, Delete Fix (2026-06-10)
+
+- Meal delete bug ("Meal log not found or access denied"): root flow was actually correct (verified via API — fresh add+delete works); the error came from deleting a stale/cross-session row, and the global Apollo errorLink also popped its own scary alert. Fixes:
+  - deleteMealHandler now optimistically removes the row, treats "not found/access denied" as already-deleted (no error), then refetches
+  - Apollo errorLink gained a `skipGlobalError` context flag; the delete passes it so the benign error never double-pops
+- Split the overcrowded Nutrition page into two mypage sections via a `view` prop on NutritionContent (shared state/queries/localStorage kept in one component):
+  - 'nutrition' → "Nutrition Plan" (calculator form + results + suggested meal plan + Recalculate)
+  - 'mealTracker' → "Meal Tracker" (AI Scan + Log Meal + AI scan result + today's intake vs targets + week/month/year calorie history + recent meals + AI scan history)
+  - New userOnly menu item "Meal Tracker"; legacy /nutrition still redirects to the plan page; targets in the tracker come from the plan saved in per-user localStorage
+- Verified live: plan page shows only plan (no meal list), tracker shows only tracker (no form), delete removes the row with no error popup and updates the DB; both pages 0 mobile overflow
+- tsc clean, production build clean, test user removed
+
+## Deep Legacy Cleanup + Real-time/Last-seen (2026-06-11)
+
+### Nestar legacy removed (verified nothing else remains)
+- DELETED legacy SCSS entirely: _app.tsx no longer imports scss/pc/main.scss or scss/mobile/main.scss; removed scss/pc/ (~25 Nestar partials: addNewProperty, myProperties, myFavorites, mySaved, memberProperties, homepage, cs, etc.) and scss/mobile/. Current UI is 100% app.scss → landing.scss + workout.scss. Verified: all guest pages + admin + trainer mypage render perfectly (admin ad-table styled, sidebar intact)
+- DELETED 8 redirect-stub pages (/property, /agent, /_admin/properties, /_admin/cs/{inquiry,faq,notice}) — nothing linked to them; old URLs now hit the branded 404
+- DELETED 6 unused enums (notice/notification/nutrition/payment/recommendation/subscription), 4 unused type files (like/*, view/view.input, board-article.update) + empty dirs, libs/utils.ts (fully dead), and 8 unused legacy image dirs/files (apartmentMain, community, event(s), fiber, flag, icons, property)
+- KEPT libs/types/follow/follow.ts (member.ts imports MeFollowed via relative path — initial unused-scan missed it; restored from git before it broke the build)
+
+### Polish + real-time
+- Dashboard subscription summary: raw "NO_SUBSCRIPTION"/"MONTHLY:ACTIVE" → friendly card ("You're on the Free plan" + Upgrade CTA / "Monthly plan · Active" + Manage), USER-only
+- Notifications now poll (20s) so the sidebar badge updates live like Messages
+- Chat "last seen" implemented (backend, in-memory consistent with existing presence): OnlineStatus.lastSeen field; setOnlineStatus stamps lastSeenMap on going offline; getPartnerOnlineStatus/getOnlineStatus return it; frontend shows "Active now" or "Last seen Xm ago". Verified live: A saw B "Active now" → after B disconnect "Last seen just now"
+- Backend tsc clean, frontend tsc clean, production build clean, all temp accounts removed
+
+## Program Access: Creator + Admin Free Access (2026-06-11)
+
+- Program detail (/course/detail) access logic fixed: a program is now viewable without enrolling/paying when:
+  - isCreator — the logged-in trainer owns the program (courseTrainer.memberId === user._id) → price card shows "Your program / Free / Manage Program" (links to My Programs) + "You created this program"
+  - isAdmin — any ADMIN → "Admin access / Free / ✓ Full Access" + "Free for admins"
+  - isEnrolled — unchanged paid/enrolled flow
+- hasAccess (= isEnrolled || isCreator || isAdmin) now gates the lesson Watch buttons and VideoPlayer; non-enrolled regular users still see "$X / Enroll Now" and cannot watch. Progress/Mark-done stays enrolled-only (learner feature)
+- No backend change needed: getCourse already returns full lessons (incl. videoUrl) to everyone; gating is front-end intent
+- Verified live on the real $150 program (jessica_fit's "6 month muscle gain"): creator → Manage + watches video; admin → Full Access + watches; non-enrolled user → $150 Enroll, 0 watch buttons
+- tsc clean, production build clean, temp accounts removed
+
+## Refresh-Persistence for Interactive State (2026-06-11)
+
+- Problem: refreshing while doing something reset the view (lost the open chat conversation, collapsed the program lesson video) because that state lived only in React state, not the URL.
+- Chat: opening a conversation now persists ?partner=<id> in the URL (openConversation pushes shallow); on reload the existing partnerParam effect reopens the room. Verified: click conv → reload → room still open.
+- Program lesson video: the open lesson now persists ?lesson=<id> (toggleWatch syncs URL; an effect restores watchingLesson from the query on load). Verified: Watch → reload → video still open.
+- Switching mypage sidebar category drops ?partner/?lesson (menuHandler pushes only {category}). Workout detail video and detail pages already persist via their ?id route param.
+- tsc clean, production build clean, test data removed
+
+## Chat Presence Flicker Fix (2026-06-11)
+
+- Bug: chat room header flipped between "Last seen Xm ago" and "Offline" on each refresh. Cause: getConversations onCompleted replaced the whole conversations array (no lastSeen field), racing with checkPartnerOnline (which merged lastSeen) — whichever resolved last won, so it alternated.
+- Fix: open-room presence now lives in a dedicated partnerStatus state set ONLY by getPartnerOnlineStatus (carries isOnline + lastSeen), independent of the conversations list refetch. The presence chip renders only once partnerStatus is resolved (no premature "Offline"); avatar dot + label both read partnerStatus. partnerStatus resets on conversation switch.
+- Verified live: opened a conversation with an offline partner, refreshed 4× → "Last seen just now" every time (no Offline flicker)
+- tsc clean, production build clean, test data removed
+
+## MyPage Avatar 3D Hover (2026-06-11)
+
+- Replaced the flat scale(1.05) hover on the mypage identity-card avatar with a premium 3D effect: perspective stage on .mp-profile-body; on hover the avatar does a rotateY(360deg) coin-flip + scale(1.16) + translateZ lift, intensified neon glow (multi-layer cyan box-shadow), brighter border, and a light-sweep shine streak (::after, clipped to the circle). Verified live (matrix3d transform + mpAvaShine animation applied on hover).
+- CSS-only, no markup/backend change; tsc clean, production build clean
+
+## Avatar 3D Flip Clip Fix (2026-06-11)
+
+- Bug: during the avatar coin-flip the square photo spilled outside the round frame (the circular border stayed behind). Cause: transform-style: preserve-3d on .mp-ava disables overflow:hidden + border-radius clipping in browsers.
+- Fix: removed preserve-3d (not needed — perspective is on the parent), removed backface-visibility:hidden (kept photo visible through the spin), and added border-radius:50% to the img as a clip safety. Verified: mid-flip shows the coin edge within the frame, end state is a clean circle — no square spill.
+- tsc clean, production build clean
+
+## Favicon: Gymora Brand (2026-06-11)
+
+- Browser tab still showed the old Nestar favicon. Two causes: (1) _document.tsx declared the SVG with a WRONG mime type (type="image/png") so Chrome ignored it and fell back to (2) the root public/favicon.ico which was the old Nestar icon. The /img/logo/favicon.svg was also still the Nestar logo (#ec6753 salmon).
+- Fix: rewrote favicon.svg as the Gymora mark (cyan gradient #00dce5→#00f5ff rounded square + bold dark "G", matching the navbar logo); corrected _document to type="image/svg+xml" + added apple-touch-icon; deleted the Nestar public/favicon.ico (now 404 so Chrome uses the SVG link).
+- Verified: favicon.svg served 200, old /favicon.ico 404, head link correct, rendered icon = Gymora G. (Users may need a hard refresh — Chrome caches favicons aggressively.)
+- tsc clean, production build clean
+
+## Populated Workouts & Programs with Real YouTube Videos (2026-06-11)
+
+- All 49 workouts that lacked a video now have a real, embeddable YouTube workout video matched to their targetMuscle (Full Body/Legs/Chest/Back/Core/Shoulders/Arms/Glutes/Upper Body). Pool gathered via web search, each candidate verified embeddable through the YouTube oEmbed endpoint (dropped one with embedding disabled), assigned round-robin so they vary. 51/51 workouts now have video.
+- 31 programs had no curriculum (only 1 lesson existed in the whole DB). Created 124 lessons (4 per program, weeks 1-4) with category-appropriate titles/descriptions/durations and real verified videos per courseCategory (STRENGTH/YOGA/CARDIO/MOBILITY/NUTRITION). 125 lessons total now.
+- Verified live: workout detail embeds the YouTube iframe; program detail shows the 4-week curriculum with working Watch → video for creator/admin/enrolled.
+- Fixed a "No data found!" popup on program detail: CreatorCard's GET_MEMBER (and course reviews/lesson-progress queries) now use skipGlobalError + onError so legitimately-empty/missing reads don't pop the global error.
+- Data-only video population (no backend change); frontend tsc clean, production build clean, all temp accounts removed.

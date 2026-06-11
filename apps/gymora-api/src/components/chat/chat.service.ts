@@ -8,6 +8,8 @@ import { ChatInput } from '../../libs/dto/chat/chat.input';
 export class ChatService {
 	private readonly onlineMembers = new Set<string>();
 	private readonly memberConnections = new Map<string, Set<string>>();
+	// Last time a member went offline (in-memory, consistent with presence above).
+	private readonly lastSeenMap = new Map<string, Date>();
 
 	constructor(@InjectModel('Chat') private readonly chatModel: Model<Chat>) {}
 
@@ -111,7 +113,11 @@ export class ChatService {
 
 	/** Check if a specific member is online */
 	public getPartnerOnlineStatus(partnerId: string): OnlineStatus {
-		return { memberId: partnerId, isOnline: this.onlineMembers.has(partnerId) };
+		return {
+			memberId: partnerId,
+			isOnline: this.onlineMembers.has(partnerId),
+			lastSeen: this.lastSeenMap.get(partnerId),
+		};
 	}
 
 	public getConnectionIds(memberId: string): string[] {
@@ -119,12 +125,17 @@ export class ChatService {
 	}
 
 	public getOnlineStatus(memberId: string): OnlineStatus {
-		return { memberId, isOnline: this.onlineMembers.has(memberId) };
+		return { memberId, isOnline: this.onlineMembers.has(memberId), lastSeen: this.lastSeenMap.get(memberId) };
 	}
 
 	public setOnlineStatus(memberId: string, isOnline = true): OnlineStatus {
-		if (isOnline) this.onlineMembers.add(memberId);
-		else this.onlineMembers.delete(memberId);
+		if (isOnline) {
+			this.onlineMembers.add(memberId);
+		} else {
+			this.onlineMembers.delete(memberId);
+			// Stamp the moment they went offline for "last seen" display
+			this.lastSeenMap.set(memberId, new Date());
+		}
 		return this.getOnlineStatus(memberId);
 	}
 

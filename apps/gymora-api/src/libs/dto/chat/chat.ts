@@ -25,6 +25,8 @@ export class OnlineStatus {
 	memberId: string;
 	@Field(() => Boolean)
 	isOnline: boolean;
+	@Field(() => Date, { nullable: true })
+	lastSeen?: Date;
 }
 
 @ObjectType()
