@@ -1060,6 +1060,82 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 - Verified live: logout confirm renders fully themed (glass popup, cyan ? icon, red Yes + ghost Cancel, blurred backdrop). Global theme auto-applies to every existing Swal call.
 - tsc clean, production build clean
 
+## Admin Top Bar Removed — Overlapping Avatar Fixed (2026-06-12)
+
+- BUG (user report): an empty fixed strip sat across the top of admin pages with a floating avatar at its edge, overlapping the page content. Cause: LayoutAdmin's position:fixed AppBar contained ONLY the avatar menu trigger, while the desktop content had pt:0 — the translucent bar covered the content's top
+- Fix: desktop AppBar removed entirely; the account menu (nick/phone + Logout) moved to the drawer's user chip, which is now a bordered clickable card (hover + open states). Mobile keeps a burger-only AppBar (content keeps its 64px top padding). Unused Tooltip import + openMenu state removed
+- Verified live as ADMIN via CDP headless Chrome: desktop — no top bar, "Members" header at the very top, chip click opens the dark Logout menu; mobile 390px — burger opens the drawer with the restyled menu; tsc 0 errors; temp admin removed from DB
+
+## Admin Drawer Submenu Restyle (2026-06-12)
+
+- BUG (user report): expanding Users/Workouts/etc. in the admin drawer showed a cramped, unstyled submenu. Root cause: the legacy admin.scss that styled .menu_wrap/.menu-list/.li was deleted in the Deep Legacy Cleanup — the classes had NO styles left; plus `<Typography variant={sub.title}>` passed an invalid MUI variant ("List")
+- AdminMenuList rendering rewritten with self-contained MUI sx (no external CSS dependency): parent rows 46px rounded with icon+bold label+chevron and route-active tint; submenu items 38px rounded pills indented under the icon column with a connector dot (cyan glowing when active, gray otherwise), cyan active text/background; accordion + routing logic untouched
+- Verified live AS ADMIN via raw CDP-driven headless Chrome (token seeded into localStorage): screenshot shows Users→List active (cyan pill + dot) and Workouts expanded simultaneously, comfortable spacing; tsc 0 errors; temp admin removed from DB
+
+## i18n Phases C + D — Auth, MyPage, Static, Alerts, Titles, SEO (2026-06-12) — MIGRATION COMPLETE
+
+### Phase C (4 agents: auth / static / mypage-core / mypage-content — mypage split in two sequential passes to avoid mypage.json write conflicts)
+- auth.json (25): /account/join — photo-panel quote, dynamic headings, tabs, fields, busy states
+- static.json (85): /about /cs /privacy /terms /404 /500 — full FAQ + legal copy faithfully translated; 404/500 wit preserved ("день ног" / "oyoq kunini o'tkazib yuborgan")
+- mypage.json (396 = 219 core + 177 content): sidebar menu + identity card, role-aware dashboard, My/Create Workouts+Programs, LessonManager, My Articles + WriteArticle + Teditor (dark editor), MyProfile, Notifications (typed labels + relative-time keys), ChatContent (presence/lastSeen/day pills/receipts), NutritionContent (calculator, tracker, AI scan, meal types map, macroShort P:/Б:/O:), ProgressContent, SubscriptionContent + standalone /subscription (now reuses the honest membership copy)
+
+### Phase D (done by hand, conflict-free)
+- libs/config.ts Messages → getters resolving common:alerts.* at access time (call sites unchanged, English fallback pre-init); sweetAlert.ts Yes/Cancel/Login buttons via i18n.t
+- Page titles: LayoutBasic route map + LayoutHome → common:titles.* (15 routes ×3 langs); _document meta description kr→uz
+- hreflang: hrefLangLinks(router) helper rendered in both layouts' Head — IMPORTANT LESSON: a component calling useRouter() inside next/head CRASHES prerender ("NextRouter was not mounted" — Head children render outside the router context); implemented as a plain function taking the router instead. Gated behind NEXT_PUBLIC_SITE_URL (hreflang needs absolute urls — set it in production env)
+- moment locales (ru, uz-latn) wired in _app, synced to router.locale — MMM D dates localize
+
+### Final verification (everything)
+- yarn i18n:report: 873/873 keys, ru 100% / uz 100% across 10 namespaces
+- eslint i18next/no-literal-string across ALL of pages+libs: 0 warnings (only pre-existing img/deps warnings remain)
+- tsc 0 errors; production build clean after the hreflang fix (3-locale SSG); dev server restarted clean
+- Live verified: titles (Библиотека тренировок — Gymora / Mashg'ulot dasturlari — Gymora), <html lang="uz">, /ru/account/join (С возвращением), /uz/cs (Yordam), /ru 404 (день ног), screenshots of /uz/account/join + /ru/cs fully localized; all routes 200
+- Whole-app i18n now COMPLETE except by-design exclusions: admin panel (English), DB/user content, notifyMember payloads (recipient locale unknown), backend err.message pass-throughs
+
+## i18n Phase B — All Public Pages Trilingual (2026-06-12)
+
+### Scope (parallel 5-agent migration, shared parts done centrally first)
+- Central prep (conflict-free): enums.json ×3 (difficulty/muscle/category/articleCategory/memberType — display-only, backend values untouched), common.json extended (stats/actions/creator/empty/videoPlayer), shared components migrated by hand: CreatorCard, LikeButton, VideoPlayer (iframe title fallback)
+- Agent-migrated, each owning exclusive files + its namespace ×3 locales:
+  - landing.json (62 keys): index + HeroSection (per-word rise animation preserved by splitting the TRANSLATED title), HotWorkouts, TopCourses, EliteTrainers, HowItWorks, CommunityPulse, PricingSection; marquee now renders enum keys
+  - workout.json (46): list + detail — filters/sorts/seg control translated, muscle chip row values still raw for the API, labels via enums
+  - program.json (68): list + detail — price card states (Enroll/Enrolled/Your program/Admin access), curriculum, review gating notes, 6 alert strings; Stripe flow untouched
+  - trainer.json (52): list + detail + /member — follow/review/social sections, plurals via explicit Count/CountOne key pairs (i18next _one/_few/_many avoided to keep check-locales key parity)
+  - community.json (24): list + detail — categories via enums, minRead reuse, comment alerts
+- Pattern adopted everywhere: useTranslation('<ns>') + explicit common:/enums: cross-namespace; enum display uses { defaultValue: rawValue } fallback; getStaticProps loads ['common', '<ns>', 'enums']
+
+### Verified
+- yarn i18n:report: 344/344 keys 100% in ru and uz across 11 namespaces; check-locales passes
+- i18next lint warnings in ALL migrated files: 0; tsc 0 errors; production build clean
+- Live: /ru landing hero fully Russian (Экспертные тренировки / Реальные результаты + CTAs), /uz/workout fully Uzbek (Mashqlar kutubxonasi, seg Boshlang'ich/O'rta/Yuqori, muscle chips Ko'krak/Orqa...), /ru/course (Тренировочные программы + Все цели/Сила/Кардио...), /ru/trainer (Элитные тренеры), /uz/community (Hamjamiyat, Maqola yozish); en default unchanged
+- Intentionally untranslated (by design): DB content, notifyMember payloads (recipient locale unknown — candidate for key-based notifications later), err.message pass-throughs, Messages config (Phase D scope), prices/units/glyphs
+
+### Remaining: Phase C (auth + mypage components), Phase D (sweetAlert/config Messages, static pages, page titles, hreflang)
+
+## i18n Phase A — Infrastructure, Tooling, Navbar/Footer (2026-06-12)
+
+### Decisions (user-confirmed)
+- Locales: en (default, no URL prefix) / ru / uz — legacy kr removed; localeDetection: false (explicit choice only, persisted via NEXT_LOCALE cookie restored by <LocaleRestore /> in _app)
+
+### Tooling (built FIRST per user request)
+- scripts/check-locales.js — validates key parity across en/ru/uz per namespace (missing/extra/empty keys + {{placeholder}} mismatches; en = reference); `--report` prints a coverage table. Negative-tested (catches all 3 problem classes, exit 1). Wired: yarn i18n:check / i18n:report; `yarn lint` now chains it
+- eslint-plugin-i18next (dev dep) configured CONSERVATIVELY in new .eslintrc.json: mode jsx-only, attributes limited to placeholder/title/alt/aria-label/label, excludes (no-letter strings, ALL_CAPS tokens, brand/tech words); severity "warn" during migration; OFF for _admin/LayoutAdmin/scripts/_document. Verified: catches "Log in"/aria-label/alt, ignores "→"/single letters
+- Side effect handled: .eslintrc made `next build` lint — pre-existing stylistic errors (react/no-unescaped-entities, react/display-name) turned off
+
+### Infrastructure
+- public/locales/{en,ru,uz}/ with 11 namespaces: common (38 keys translated ×3), landing/workout/program/trainer/community/mypage/auth/static/enums/alerts (skeletons for Phases B-D); legacy Nestar common.json deleted
+- Key convention: nested camelCase (nav.workouts, footer.backToTop), {{var}} interpolation — NOT English-sentence keys
+- LanguageSwitcher.tsx: dropdown (desktop, gnav-lang-* styles) + pill row variant (mobile menu); sets NEXT_LOCALE cookie + router.push with locale
+- _document.tsx: <Html lang> from ctx.locale; Korean meta description → Uzbek
+- Migrated to t(): GymNavbar (+ switcher both variants), GymFooter, LandingFooter — 0 i18next lint warnings remain in these files
+
+### AGENTS.md enforcement
+- gymora-next/AGENTS.md: mandatory i18n section (7 rules — no hardcoded text, 3-locale parity, namespaces, key naming, enum display, admin exempt, DB content not translated); gymora/AGENTS.md frontend conventions references it
+
+### Verified
+- tsc 0 errors; i18n:check passes; /ru and /uz render translated navbar (Тренировки/Войти/Начать; Mashqlar/Kirish/Boshlash) — headless screenshots; production build clean (3-locale SSG); dev server restarted clean
+- Remaining: Phases B (public pages) / C (auth+mypage) / D (alerts, static, titles, hreflang) — page bodies still English
+
 ## Last Seen for Everyone — Persistent + Site-wide Presence (2026-06-11)
 
 - BUG (user report): other accounts showed "Offline" instead of "Last seen …". Two root causes:

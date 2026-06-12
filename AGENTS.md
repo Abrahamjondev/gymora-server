@@ -151,6 +151,10 @@ gymora-front/
 - Frontend TypeScript enums must match backend enum values exactly — they are sent as strings over GraphQL.
 - Types in `libs/types/<entity>/` mirror the backend `@ObjectType` fields. Keep them in sync when adding `@Field()` declarations to the backend.
 
+### i18n (frontend)
+
+- The frontend is trilingual (`en` default, `ru`, `uz`) via next-i18next. NEVER hard-code user-facing text — use `useTranslation('<namespace>')` + `t('key')`, and add every new key to all three files in `public/locales/{en,ru,uz}/`. `yarn i18n:check` enforces locale parity. The admin panel stays English. Full rules: `gymora-front/AGENTS.md` → i18n.
+
 ## Domain rules
 
 ### Membership and access
