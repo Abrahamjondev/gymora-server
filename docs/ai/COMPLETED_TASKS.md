@@ -1060,6 +1060,19 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 - Verified live: logout confirm renders fully themed (glass popup, cyan ? icon, red Yes + ghost Cancel, blurred backdrop). Global theme auto-applies to every existing Swal call.
 - tsc clean, production build clean
 
+## Workout Thumbnails De-duplicated + Top Trainer Reorder (2026-06-12) — DATA ONLY
+
+- User disliked the "woman lying doing crunches" workout images on the landing. Content-hash audit revealed the REAL scale: ONE seed image (red-leggings crunches) was reused by 27 of 53 files in uploads/workout (25 live workouts + 2 orphans), all targetMuscle=Full Body
+- Replaced all 27 by overwriting the files in place (same filenames — zero DB changes): 17 visually-verified Unsplash images (w=1200, free license) matched to each workout's TITLE theme — battle ropes→HIIT/Fat Loss, barbell/deadlift→Olympic/Power Blast, swimmer→Swim Conditioning, beach group→Zumba, sunset lotus/tree-pose silhouettes→Yoga/Prenatal, sled/pushup/dumbbell-rack etc.; ≤3 reuses per image. Every candidate reviewed on a contact sheet first (one candidate REJECTED — it was the same red-crunches source; bright-yellow and non-fitness ones also dropped). Featured landing card iterated twice (boxing gloves → yoga pose → barbell grip) until unambiguous
+- Elite Trainers order: Claire/James/Erik were tied at memberRank 5 with Claire winning the tie — user wanted a male trainer first. james_bodybuilder → memberRank 6; landing now features James Williams (verified: list 01 James, 02 Claire; portrait switched to trainer_9.jpg)
+- Verified via CDP screenshots: landing Hot Workouts (no lying-women images, featured = dark barbell grip), Elite Trainers (James #1), /workout library pages show varied thumbnails. No code changes
+
+## Date Locale Consistency (audit follow-ups 1+2) (2026-06-12)
+
+- toLocaleDateString/TimeString used the BROWSER locale (no-arg or []) in 23 call sites across 13 files — a ru-browser user on the uz site saw ru-formatted dates. New `appLocale()` helper in libs/config.ts (reads i18n.language, falls back en) now passed everywhere outside _admin; verified live: /community dates render 02.06.2026 (ru) / 2026-06-02 (uz) / 6/2/2026 (en) per APP language
+- moment.locale was set in a client useEffect → SSR-rendered moment dates would be English; moved into the App render body (idempotent, runs on server too); LocaleRestore now only handles the NEXT_LOCALE cookie
+- tsc 0 errors, i18n:check passes, production build clean, dev server restarted
+
 ## Admin Top Bar Removed — Overlapping Avatar Fixed (2026-06-12)
 
 - BUG (user report): an empty fixed strip sat across the top of admin pages with a floating avatar at its edge, overlapping the page content. Cause: LayoutAdmin's position:fixed AppBar contained ONLY the avatar menu trigger, while the desktop content had pt:0 — the translucent bar covered the content's top
