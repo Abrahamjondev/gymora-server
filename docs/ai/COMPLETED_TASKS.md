@@ -1060,6 +1060,34 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 - Verified live: logout confirm renders fully themed (glass popup, cyan ? icon, red Yes + ghost Cancel, blurred backdrop). Global theme auto-applies to every existing Swal call.
 - tsc clean, production build clean
 
+## Last Seen for Everyone — Persistent + Site-wide Presence (2026-06-11)
+
+- BUG (user report): other accounts showed "Offline" instead of "Last seen …". Two root causes:
+  1. lastSeen lived ONLY in an in-memory Map stamped on socket disconnect — wiped on every backend restart, and empty for anyone not seen since boot
+  2. the presence socket connected ONLY while the chat page was open (useSocket used solely in ChatContent) — members browsing the rest of the site were never "online" and never got a lastSeen stamp
+- Backend fix (Member.lastSeenAt persistence): Member schema + lastSeenAt: Date; ChatModule registers Member model; ChatService.stampLastSeen() writes memory + DB (fire-and-forget) on BOTH connect (crash-safe floor) and disconnect; resolveLastSeen() = in-memory ?? DB fallback; getOnlineStatus/getPartnerOnlineStatus async; register/unregisterConnection → void (gateway never used returns)
+- Frontend fix: <PresenceSocket /> mounted in _app (calls the existing shared/refcounted useSocket) — logged-in members are now online on EVERY page, and leaving the site stamps lastSeen; logout disconnects via the user._id effect cleanup
+- Verified live e2e: temp user connect → observer sees isOnline:true; disconnect → isOnline:false + lastSeen; backend watch-restart (memory wiped) → SAME lastSeen still returned (DB fallback proven); temp users removed from DB
+- backend tsc clean, frontend tsc clean, production build clean; dev server .next cache corrupted by yarn build again — restarted clean (known issue)
+
+## Navbar Logo "Slot Machine" Hover Animation (2026-06-11)
+
+- User disliked the old coin-flip (G "just spins") — replaced with a brand-telling slot-machine effect: on hover the G motion-blurs and rolls vertically through G→Y→M→O→R→A (the mark literally spells the brand), overshoots past the final G and bounces back onto it
+- Choreography: roll lands at ~78% → mark does a squash-pop (gnavMarkLand scale 1.24 + -7deg), a cyan shockwave ring pings outward (gnavPing on .gnav-logo::before), the shine sweep fires delayed to coincide with the landing, and a cyan glint sweeps across the "gymora" wordmark via background-clip:text (gnavWordShine — band sits off-screen so the static wordmark stays pure white)
+- Markup: mark's single <span>G</span> → .gnav-roll strip of 7 <i> letters (aria-hidden; strip top-anchored so rest state shows the first G); square→circle morph + glow kept, old rotate/gnavLetterFlip removed
+- Verified: static navbar renders clean G + white wordmark (headless Chrome screenshot); animation math validated by freezing gnavRoll at 0/30/58/78/100% in an isolated harness — blurred mid-roll, sharp overshoot, exact landing on G (-85.714% = letter 7 of 7)
+- tsc 0 errors; only GymNavbar uses these classes (footer unaffected)
+
+## Stale-UI-After-Mutation Sweep (refetch + manual setState) (2026-06-11)
+
+- BUG (user report): AI-scanned meal "Log as lunch/dinner" showed success but Eaten/Recent Meals stayed at 0 until a manual refresh. Cause: `await mealsRefetch()` discarded the result and relied on `onCompleted`, which Apollo does NOT reliably re-fire on refetch (long-documented project pattern — deleteMealHandler in the same file already used the manual fix, the log handlers didn't)
+- NutritionContent: new `reloadMeals()` helper (mealsRefetch + setMeals, nutritionHistoryRefetch + setNutritionHistory, both manual) used in all 4 spots — logScanAsMeal, addMealHandler, deleteMealHandler, AI-history quick-log buttons
+- Project-wide audit of every refetch call site for the same stale-UI class; fixed the 3 remaining offenders:
+  - ChatContent: opening a conversation (`msgsRefetch(...).then`) now sets messages from the result (previously could show stale messages until the 6s poll); socket new-conversation `convsRefetch()` now sets conversations from the result (first message from a new partner could otherwise never appear until refresh)
+  - workout/detail createCommentHandler: comments + total now set manually from the refetch result
+- All other call sites verified already correct (mypage, subscription, community detail/list, trainer/member/course detail, MyArticles, LessonManager, ProgressContent); list pages re-fetch via useQuery variable changes (onCompleted fires for variable changes — not affected)
+- tsc 0 errors; changed pages smoke-tested 200 on dev server
+
 ## Program Likes (purchasers only) + Purchase Count Social Proof (2026-06-11)
 
 ### Backend (new feature — LikeGroup.COURSE already existed, review purchase-gate already existed)

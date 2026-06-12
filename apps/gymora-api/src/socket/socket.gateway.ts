@@ -100,7 +100,7 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 	}
 
 	@SubscribeMessage('chat:online')
-	public handleChatOnline(@ConnectedSocket() client: AuthenticatedSocket) {
+	public async handleChatOnline(@ConnectedSocket() client: AuthenticatedSocket) {
 		const memberId = this.getAuthenticatedMemberId(client);
 		return this.chatService.getOnlineStatus(memberId);
 	}

@@ -3,15 +3,40 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Chat, Conversation, OnlineStatus } from '../../libs/dto/chat/chat';
 import { ChatInput } from '../../libs/dto/chat/chat.input';
+import { Member } from '../../libs/dto/member/member';
 
 @Injectable()
 export class ChatService {
 	private readonly onlineMembers = new Set<string>();
 	private readonly memberConnections = new Map<string, Set<string>>();
-	// Last time a member went offline (in-memory, consistent with presence above).
+	// Hot cache for "last seen"; the durable copy lives on Member.lastSeenAt so
+	// it survives server restarts and is visible for members seen before boot.
 	private readonly lastSeenMap = new Map<string, Date>();
 
-	constructor(@InjectModel('Chat') private readonly chatModel: Model<Chat>) {}
+	constructor(
+		@InjectModel('Chat') private readonly chatModel: Model<Chat>,
+		@InjectModel('Member') private readonly memberModel: Model<Member>,
+	) {}
+
+	/** Stamp last-seen in memory AND on the member document (fire-and-forget). */
+	private stampLastSeen(memberId: string): void {
+		const now = new Date();
+		this.lastSeenMap.set(memberId, now);
+		if (!Types.ObjectId.isValid(memberId)) return;
+		this.memberModel
+			.updateOne({ _id: memberId }, { $set: { lastSeenAt: now } })
+			.exec()
+			.catch(() => {});
+	}
+
+	/** In-memory last-seen, falling back to the persisted Member.lastSeenAt. */
+	private async resolveLastSeen(memberId: string): Promise<Date | undefined> {
+		const cached = this.lastSeenMap.get(memberId);
+		if (cached) return cached;
+		if (!Types.ObjectId.isValid(memberId)) return undefined;
+		const member = await this.memberModel.findById(memberId).select('lastSeenAt').lean().exec();
+		return (member as any)?.lastSeenAt ?? undefined;
+	}
 
 	public async sendMessage(input: ChatInput): Promise<Chat> {
 		const result = await this.chatModel.create(input);
@@ -112,11 +137,11 @@ export class ChatService {
 	}
 
 	/** Check if a specific member is online */
-	public getPartnerOnlineStatus(partnerId: string): OnlineStatus {
+	public async getPartnerOnlineStatus(partnerId: string): Promise<OnlineStatus> {
 		return {
 			memberId: partnerId,
 			isOnline: this.onlineMembers.has(partnerId),
-			lastSeen: this.lastSeenMap.get(partnerId),
+			lastSeen: await this.resolveLastSeen(partnerId),
 		};
 	}
 
@@ -124,34 +149,36 @@ export class ChatService {
 		return Array.from(this.memberConnections.get(memberId) ?? []);
 	}
 
-	public getOnlineStatus(memberId: string): OnlineStatus {
-		return { memberId, isOnline: this.onlineMembers.has(memberId), lastSeen: this.lastSeenMap.get(memberId) };
+	public async getOnlineStatus(memberId: string): Promise<OnlineStatus> {
+		return { memberId, isOnline: this.onlineMembers.has(memberId), lastSeen: await this.resolveLastSeen(memberId) };
 	}
 
-	public setOnlineStatus(memberId: string, isOnline = true): OnlineStatus {
+	public setOnlineStatus(memberId: string, isOnline = true): void {
 		if (isOnline) {
 			this.onlineMembers.add(memberId);
+			// Stamp on connect too, so a crash (no disconnect event) still leaves
+			// a truthful "last seen" floor in the database.
+			this.stampLastSeen(memberId);
 		} else {
 			this.onlineMembers.delete(memberId);
 			// Stamp the moment they went offline for "last seen" display
-			this.lastSeenMap.set(memberId, new Date());
+			this.stampLastSeen(memberId);
 		}
-		return this.getOnlineStatus(memberId);
 	}
 
-	public registerConnection(memberId: string, socketId: string): OnlineStatus {
+	public registerConnection(memberId: string, socketId: string): void {
 		const connections = this.memberConnections.get(memberId) ?? new Set<string>();
 		connections.add(socketId);
 		this.memberConnections.set(memberId, connections);
-		return this.setOnlineStatus(memberId, true);
+		this.setOnlineStatus(memberId, true);
 	}
 
-	public unregisterConnection(memberId: string, socketId: string): OnlineStatus {
+	public unregisterConnection(memberId: string, socketId: string): void {
 		const connections = this.memberConnections.get(memberId);
-		if (!connections) return this.getOnlineStatus(memberId);
+		if (!connections) return;
 		connections.delete(socketId);
-		if (connections.size) return this.getOnlineStatus(memberId);
+		if (connections.size) return;
 		this.memberConnections.delete(memberId);
-		return this.setOnlineStatus(memberId, false);
+		this.setOnlineStatus(memberId, false);
 	}
 }

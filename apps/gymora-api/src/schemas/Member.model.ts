@@ -95,6 +95,11 @@ const MemberSchema = new Schema(
 		deletedAt: {
 			type: Date,
 		},
+		// Stamped by ChatService on socket connect/disconnect so "last seen"
+		// survives server restarts (the live presence Set is in-memory only).
+		lastSeenAt: {
+			type: Date,
+		},
 	},
 	{ timestamps: true, collection: 'members' },
 );
