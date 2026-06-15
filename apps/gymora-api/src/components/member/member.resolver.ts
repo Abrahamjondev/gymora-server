@@ -1,6 +1,6 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { MemberService } from './member.service';
-import { LoginInput, MemberInput, MembersInquiry, TrainersInquiry } from '../../libs/dto/member/member.input';
+import { LoginInput, MemberInput, MembersInquiry, TelegramAuthInput, TrainersInquiry } from '../../libs/dto/member/member.input';
 import { Member, Members } from '../../libs/dto/member/member';
 import { UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -30,6 +30,23 @@ export class MemberResolver {
 	public async login(@Args('input') input: LoginInput): Promise<Member> {
 		console.log('Mutation login ');
 		return await this.memberService.login(input);
+	}
+
+	@Mutation(() => Member)
+	public async telegramAuth(@Args('input') input: TelegramAuthInput): Promise<Member> {
+		console.log('Mutation telegramAuth ');
+		return await this.memberService.telegramAuth(input);
+	}
+
+	//Authenticated: link a Telegram account to the currently logged-in member
+	@UseGuards(AuthGuard)
+	@Mutation(() => Member)
+	public async linkTelegram(
+		@Args('input') input: TelegramAuthInput,
+		@AuthMember('_id') memberId: ObjectId,
+	): Promise<Member> {
+		console.log('Mutation linkTelegram ');
+		return await this.memberService.linkTelegram(memberId, input);
 	}
 	//Authenticated
 	@UseGuards(AuthGuard)

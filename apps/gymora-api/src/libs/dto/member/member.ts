@@ -1,4 +1,4 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 import { type ObjectId } from 'mongoose';
 import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
 import { MeLiked } from '../like/like';
@@ -18,13 +18,23 @@ export class Member {
 	@Field(() => MemberAuthType)
 	memberAuthType: MemberAuthType;
 
-	@Field(() => String)
-	memberPhone: string;
+	@Field(() => String, { nullable: true })
+	memberPhone?: string;
 
 	@Field(() => String)
 	memberNick: string;
 
 	memberPassword?: string;
+
+	@Field(() => Float, { nullable: true })
+	telegramId?: number;
+
+	@Field(() => String, { nullable: true })
+	telegramUsername?: string;
+
+	// Internal Telegram fields (not exposed over GraphQL)
+	telegramPhotoUrl?: string;
+	telegramAuthDate?: number;
 
 	@Field(() => String, { nullable: true })
 	memberFullName?: string;

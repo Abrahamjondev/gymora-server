@@ -1192,3 +1192,25 @@ Mutations: COMPLETE_LESSON, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON, CREATE_
 - Program list cards: show enrolled count (green) + likes (red) as trust signals so popular programs stand out
 - Verified live (API + browser): non-purchaser like BLOCKED, purchaser like 0→1 and toggles back, counts render on detail + list
 - backend tsc clean, frontend tsc clean, production build clean, test data removed
+
+## Telegram Login (Login Widget) — Backend Auth Provider (2026-06-15)
+
+### Audit first (no code until approved)
+- Mapped existing auth: custom GraphQL guards (AuthGuard / RolesGuard / WithoutGuard — no Passport), `AuthService.createToken` embeds the whole member doc minus password into a 30d JWT (`SECRET_TOKEN`), signup/login by nick+password
+- Found the one real break risk: `Member.memberPhone` was a NON-null GraphQL `@Field` reused via full-`Member` embeds in comment.memberData + follow.follower/followingData — a phone-less Telegram member would crash every query returning it. No phone/SMS/referral logic exists anywhere (subscriptions/payments/notifications/chat are all memberId-only → safe)
+
+### Backend feature
+- Member schema: added `telegramId` (Number, unique sparse index), `telegramUsername`, `telegramPhotoUrl`, `telegramAuthDate`; `memberPhone`/`memberPassword` made conditionally required (NOT required when `memberAuthType === TELEGRAM`)
+- Member DTO: `memberPhone` → `{ nullable: true }` (the audit fix — also fixes the comment/follow embeds for free); exposed `telegramId` (Float — Telegram ids exceed GraphQL Int) + `telegramUsername`; internal `telegramPhotoUrl`/`telegramAuthDate`
+- `TelegramAuthInput` DTO mirrors the Login Widget payload (id, first_name, last_name?, username?, photo_url?, auth_date, hash)
+- `AuthService.verifyTelegramAuth()`: rebuilds the data-check-string (sorted `key=value`, `\n`-joined, hash excluded), `secret = SHA256(bot_token)`, `HMAC_SHA256`, `crypto.timingSafeEqual` (with length-guard), + 300s `auth_date` replay window; reads `TELEGRAM_BOT_TOKEN` via ConfigService (ConfigModule added to AuthModule imports)
+- `MemberService.telegramAuth()`: verify → find by `telegramId` (BLOCK/DELETE status checks, refresh profile + save) or provision a standalone TELEGRAM member with a collision-safe nick (`generateUniqueNick`: username → `tg_<id>` fallback → numeric suffix); password `login()` now rejects TELEGRAM accounts (`TELEGRAM_LOGIN_ONLY`)
+- `MemberService.linkTelegram()`: opt-in linking for an authenticated member — verify → reject if `telegramId` already owned by another member (`TELEGRAM_ALREADY_LINKED`) → attach. Accounts stay SEPARATE by default; never auto-merged at login
+- Resolver: `telegramAuth` mutation (public, like login/signup) + `linkTelegram` mutation (`@UseGuards(AuthGuard)` + `@AuthMember('_id')`)
+- 4 new `Message` enum entries (TELEGRAM_AUTH_FAILED / _EXPIRED / _ALREADY_LINKED / _LOGIN_ONLY); `TELEGRAM_BOT_TOKEN` added to `.env`
+
+### Tests (unit, mocks only — no production bug found)
+- `auth.service.spec.ts` (11): valid payload, invalid hash, expired auth_date, missing token, post-hash tampering, timing-safe path (unequal-length guard + equal-length constant-time) — `verifyTelegramAuth` 100% line/branch
+- `member.service.spec.ts` (14): existing-member login, new creation, blocked, deleted, duplicate-link rejection, successful + same-owner re-link, invalid payload (no DB touched), nick collision (fallback/suffix/loop), create-failure mapping, UPDATE_FAILED — telegramAuth + linkTelegram + generateUniqueNick 100% covered
+- Test-tooling only (NOT production): Jest `moduleNameMapper` stub for ESM-only `uuid` (ts-jest can't transform node_modules) at `test/mocks/uuid.js`
+- Full suite 22 passed; `nest build gymora-api` clean; tsc clean (pre-existing supertest/types test errors unrelated)

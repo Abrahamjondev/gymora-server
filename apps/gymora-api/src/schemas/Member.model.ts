@@ -21,7 +21,10 @@ const MemberSchema = new Schema(
 		memberPhone: {
 			type: String,
 			index: { unique: true, sparse: true },
-			required: true,
+			// Telegram members have no phone; required for every other auth type.
+			required: function (this: any): boolean {
+				return this.memberAuthType !== MemberAuthType.TELEGRAM;
+			},
 		},
 		memberNick: {
 			type: String,
@@ -31,7 +34,25 @@ const MemberSchema = new Schema(
 		memberPassword: {
 			type: String,
 			select: false,
-			required: true,
+			// Telegram members authenticate via signature, not a password.
+			required: function (this: any): boolean {
+				return this.memberAuthType !== MemberAuthType.TELEGRAM;
+			},
+		},
+		// --- Telegram Login Widget identity ---
+		telegramId: {
+			type: Number,
+			index: { unique: true, sparse: true },
+		},
+		telegramUsername: {
+			type: String,
+		},
+		telegramPhotoUrl: {
+			type: String,
+		},
+		// Last verified Telegram auth_date (epoch seconds) — replay defense.
+		telegramAuthDate: {
+			type: Number,
 		},
 		memberFullName: {
 			type: String,

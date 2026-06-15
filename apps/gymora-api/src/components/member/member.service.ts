@@ -2,8 +2,8 @@ import { BadGatewayException, Injectable, InternalServerErrorException } from '@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Member, Members } from '../../libs/dto/member/member';
-import { LoginInput, MemberInput, MembersInquiry, TrainersInquiry } from '../../libs/dto/member/member.input';
-import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
+import { LoginInput, MemberInput, MembersInquiry, TelegramAuthInput, TrainersInquiry } from '../../libs/dto/member/member.input';
+import { MemberAuthType, MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
 import { MemberUpdate, MemberUpdateByAdmin } from '../../libs/dto/member/member.update';
@@ -51,6 +51,9 @@ export class MemberService {
 			throw new InternalServerErrorException(Message.NO_MEMBER_NICK);
 		} else if (response.memberStatus === MemberStatus.BLOCK) {
 			throw new InternalServerErrorException(Message.BLOCKED_USER);
+		} else if (response.memberAuthType === MemberAuthType.TELEGRAM || !response.memberPassword) {
+			// Telegram-only accounts have no password — block password login outright.
+			throw new InternalServerErrorException(Message.TELEGRAM_LOGIN_ONLY);
 		}
 
 		const isMatch = await this.authService.comparePassword(input.memberPassword, response.memberPassword);
@@ -59,6 +62,95 @@ export class MemberService {
 
 		return response;
 	}
+
+	/**
+	 * Telegram Login Widget entry point.
+	 * Verifies the signature, then logs in an existing Telegram member (by telegramId)
+	 * or provisions a brand-new standalone TELEGRAM account.
+	 */
+	public async telegramAuth(input: TelegramAuthInput): Promise<Member> {
+		this.authService.verifyTelegramAuth(input);
+
+		const existing = await this.memberModel.findOne({ telegramId: input.id }).exec();
+		if (existing) {
+			if (existing.memberStatus === MemberStatus.DELETE) throw new InternalServerErrorException(Message.NO_MEMBER_NICK);
+			if (existing.memberStatus === MemberStatus.BLOCK) throw new InternalServerErrorException(Message.BLOCKED_USER);
+
+			// Refresh mutable Telegram profile bits + replay timestamp.
+			existing.telegramUsername = input.username;
+			existing.telegramPhotoUrl = input.photo_url;
+			existing.telegramAuthDate = input.auth_date;
+			await existing.save();
+
+			existing.accessToken = await this.authService.createToken(existing);
+			return existing;
+		}
+
+		try {
+			const memberNick = await this.generateUniqueNick(input.username, input.id);
+			const created = await this.memberModel.create({
+				memberType: MemberType.USER,
+				memberStatus: MemberStatus.ACTIVE,
+				memberAuthType: MemberAuthType.TELEGRAM,
+				memberNick,
+				memberFullName: [input.first_name, input.last_name].filter(Boolean).join(' ') || undefined,
+				memberImage: input.photo_url ?? '',
+				telegramId: input.id,
+				telegramUsername: input.username,
+				telegramPhotoUrl: input.photo_url,
+				telegramAuthDate: input.auth_date,
+			});
+			created.accessToken = await this.authService.createToken(created);
+			return created;
+		} catch (err: any) {
+			console.log('Error, telegramAuth model', err.message);
+			throw new BadGatewayException(Message.USED_MEMBER_NICK_OR_PHONE);
+		}
+	}
+
+	/**
+	 * Opt-in linking: attach a verified Telegram identity to an already authenticated member.
+	 * Keeps accounts separate by default; never auto-merges at login time.
+	 */
+	public async linkTelegram(memberId: ObjectId, input: TelegramAuthInput): Promise<Member> {
+		this.authService.verifyTelegramAuth(input);
+
+		const taken = await this.memberModel.findOne({ telegramId: input.id }).exec();
+		if (taken && taken._id.toString() !== memberId.toString()) {
+			throw new InternalServerErrorException(Message.TELEGRAM_ALREADY_LINKED);
+		}
+
+		const result = await this.memberModel
+			.findOneAndUpdate(
+				{ _id: memberId, memberStatus: MemberStatus.ACTIVE },
+				{
+					telegramId: input.id,
+					telegramUsername: input.username,
+					telegramPhotoUrl: input.photo_url,
+					telegramAuthDate: input.auth_date,
+				},
+				{ new: true },
+			)
+			.exec();
+		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+
+		result.accessToken = await this.authService.createToken(result);
+		return result;
+	}
+
+	/** Derive a unique memberNick for a Telegram signup (username preferred, tg_<id> fallback). */
+	private async generateUniqueNick(username: string | undefined, telegramId: number): Promise<string> {
+		const base = (username && username.trim()) || `tg_${telegramId}`;
+		let candidate = base;
+		let suffix = 0;
+		// Collision-safe: append an incrementing suffix until the nick is free.
+		while (await this.memberModel.exists({ memberNick: candidate })) {
+			suffix += 1;
+			candidate = `${base}_${suffix}`;
+		}
+		return candidate;
+	}
+
 	public async updateMember(memberId: ObjectId, input: MemberUpdate): Promise<Member> {
 		if (input.memberPassword) {
 			input.memberPassword = await this.authService.hashPassword(input.memberPassword);

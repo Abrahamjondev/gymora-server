@@ -19,6 +19,11 @@ export enum Message {
 	NOT_ALLOWED_REQUEST = 'Not Allowed Request!',
 	PROVIDE_ALLOWED_FORMAT = 'Please provide jpg, jpeg or png images!',
 	SELF_SUBSCRIPTION_DENIED = 'Self subscription is denied!',
+
+	TELEGRAM_AUTH_FAILED = 'Telegram authentication failed, invalid signature!',
+	TELEGRAM_AUTH_EXPIRED = 'Telegram authentication data has expired, please try again!',
+	TELEGRAM_ALREADY_LINKED = 'This Telegram account is already linked to another member!',
+	TELEGRAM_LOGIN_ONLY = 'This account uses Telegram login, password login is not available!',
 }
 
 export enum Direction {

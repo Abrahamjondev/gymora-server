@@ -1,5 +1,5 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsIn, IsNotEmpty, IsOptional, Length, Min } from 'class-validator';
+import { Field, Float, InputType, Int } from '@nestjs/graphql';
+import { IsIn, IsNotEmpty, IsNumber, IsOptional, Length, Min } from 'class-validator';
 import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
 import { availableMemberSorts, availableTrainerSorts } from '../../config';
 import { Direction } from '../../enums/common.enum';
@@ -36,6 +36,41 @@ export class LoginInput {
 	@Length(5, 20)
 	@Field(() => String)
 	memberPassword: string;
+}
+
+@InputType()
+export class TelegramAuthInput {
+	// Raw fields exactly as delivered by the Telegram Login Widget.
+	// All except `hash` are concatenated into the data-check-string for HMAC verification.
+	@IsNotEmpty()
+	@IsNumber()
+	@Field(() => Float)
+	id: number;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	first_name: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	last_name?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	username?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	photo_url?: string;
+
+	@IsNotEmpty()
+	@IsNumber()
+	@Field(() => Float)
+	auth_date: number;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	hash: string;
 }
 
 @InputType()
