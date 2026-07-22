@@ -5,6 +5,7 @@ import { BoardArticle, BoardArticles } from '../../libs/dto/board-article/board-
 import { BoardArticleInput, BoardArticleUpdate, BoardArticlesInquiry } from '../../libs/dto/board-article/board-article.input';
 import { Message, Direction } from '../../libs/enums/common.enum';
 import { BoardArticleStatus } from '../../libs/enums/gymora.enum';
+import { escapeRegex } from '../../libs/config';
 
 @Injectable()
 export class BoardArticleService {
@@ -56,7 +57,7 @@ export class BoardArticleService {
 		const match: any = { articleStatus: BoardArticleStatus.ACTIVE };
 
 		if (search.articleCategory) match.articleCategory = search.articleCategory;
-		if (search.text) match.articleTitle = { $regex: new RegExp(search.text, 'i') };
+		if (search.text) match.articleTitle = { $regex: new RegExp(escapeRegex(search.text), 'i') };
 		if (search.memberId) match.memberId = new Types.ObjectId(search.memberId);
 
 		const sortKey = sort ?? 'createdAt';

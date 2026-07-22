@@ -11,6 +11,7 @@ import { ViewService } from '../view/view.service';
 import { LikeService } from '../like/like.service';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { LikeGroup } from '../../libs/enums/like.enum';
+import { escapeRegex } from '../../libs/config';
 
 @Injectable()
 export class TrainerService {
@@ -54,9 +55,10 @@ export class TrainerService {
 		const match: Record<string, any> = { deletedAt: { $exists: false } };
 
 		if (search.text) {
+			const safeText = escapeRegex(search.text);
 			match.$or = [
-				{ trainerBio: { $regex: new RegExp(search.text, 'i') } },
-				{ trainerSpecializations: { $elemMatch: { $regex: new RegExp(search.text, 'i') } } },
+				{ trainerBio: { $regex: new RegExp(safeText, 'i') } },
+				{ trainerSpecializations: { $elemMatch: { $regex: new RegExp(safeText, 'i') } } },
 			];
 		}
 
@@ -98,9 +100,10 @@ export class TrainerService {
 		const match: Record<string, any> = {};
 
 		if (search.text) {
+			const safeText = escapeRegex(search.text);
 			match.$or = [
-				{ trainerBio: { $regex: new RegExp(search.text, 'i') } },
-				{ trainerSpecializations: { $elemMatch: { $regex: new RegExp(search.text, 'i') } } },
+				{ trainerBio: { $regex: new RegExp(safeText, 'i') } },
+				{ trainerSpecializations: { $elemMatch: { $regex: new RegExp(safeText, 'i') } } },
 			];
 		}
 

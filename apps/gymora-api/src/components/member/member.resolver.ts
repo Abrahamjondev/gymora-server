@@ -57,6 +57,12 @@ export class MemberResolver {
 		return `Hi ${memberNick}, you are authenticated!`;
 	}
 
+	@UseGuards(AuthGuard)
+	@Query(() => Member)
+	public async getMyMember(@AuthMember('_id') memberId: ObjectId): Promise<Member> {
+		return await this.memberService.getMyMember(memberId);
+	}
+
 	@Roles(MemberType.USER, MemberType.TRAINER)
 	@UseGuards(RolesGuard)
 	@Query(() => String)

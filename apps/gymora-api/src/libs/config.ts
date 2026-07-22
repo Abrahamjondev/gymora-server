@@ -8,6 +8,32 @@ import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 import { T } from './types/common';
 
+export const escapeRegex = (value: string) => value.trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export const publicMemberProjection = {
+	memberType: 1,
+	memberStatus: 1,
+	memberAuthType: 1,
+	memberNick: 1,
+	memberFullName: 1,
+	memberImage: 1,
+	memberDesc: 1,
+	memberCourses: 1,
+	memberArticles: 1,
+	memberWorkouts: 1,
+	memberFollowers: 1,
+	memberFollowings: 1,
+	memberPoints: 1,
+	memberLikes: 1,
+	memberViews: 1,
+	memberComments: 1,
+	memberRank: 1,
+	createdAt: 1,
+	updatedAt: 1,
+};
+
+export const publicMemberSelect = Object.keys(publicMemberProjection).join(' ');
+
 export const validMimeTypes = ['image/png', 'image/jpg', 'image/jpeg'];
 export const getSerialForImage = (filename: string) => {
 	const ext = path.parse(filename).ext;
@@ -91,6 +117,7 @@ export const lookupMember = {
 		from: 'members',
 		localField: 'memberId',
 		foreignField: '_id',
+		pipeline: [{ $project: publicMemberProjection }],
 		as: 'memberData',
 	},
 };
@@ -99,6 +126,7 @@ export const lookupFollowingData = {
 		from: 'members',
 		localField: 'followingId',
 		foreignField: '_id',
+		pipeline: [{ $project: publicMemberProjection }],
 		as: 'followingData',
 	},
 };
@@ -108,6 +136,7 @@ export const lookupFollowerData = {
 		from: 'members',
 		localField: 'followerId',
 		foreignField: '_id',
+		pipeline: [{ $project: publicMemberProjection }],
 		as: 'followerData',
 	},
 };

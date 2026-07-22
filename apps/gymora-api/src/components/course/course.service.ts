@@ -13,7 +13,7 @@ import { Direction } from '../../libs/enums/common.enum';
 import { LikeService } from '../like/like.service';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { LikeInput } from '../../libs/dto/like/like.input';
-import { lookupAuthMemberLiked, shapeIntoMongoObjectId } from '../../libs/config';
+import { escapeRegex, lookupAuthMemberLiked, shapeIntoMongoObjectId } from '../../libs/config';
 
 @Injectable()
 export class CourseService {
@@ -82,8 +82,8 @@ export class CourseService {
 		if (search.courseDifficulty) match.courseDifficulty = search.courseDifficulty;
 		if (search.text) {
 			match.$or = [
-				{ courseTitle: { $regex: new RegExp(search.text, 'i') } },
-				{ courseDesc: { $regex: new RegExp(search.text, 'i') } },
+				{ courseTitle: { $regex: new RegExp(escapeRegex(search.text), 'i') } },
+				{ courseDesc: { $regex: new RegExp(escapeRegex(search.text), 'i') } },
 			];
 		}
 
@@ -252,8 +252,8 @@ export class CourseService {
 		if (search.courseDifficulty) match.courseDifficulty = search.courseDifficulty;
 		if (search.text) {
 			match.$or = [
-				{ courseTitle: { $regex: new RegExp(search.text, 'i') } },
-				{ courseDesc: { $regex: new RegExp(search.text, 'i') } },
+				{ courseTitle: { $regex: new RegExp(escapeRegex(search.text), 'i') } },
+				{ courseDesc: { $regex: new RegExp(escapeRegex(search.text), 'i') } },
 			];
 		}
 

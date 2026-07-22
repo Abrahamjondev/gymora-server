@@ -2,6 +2,8 @@ import * as crypto from 'crypto';
 import { AuthService } from './auth.service';
 import { Message } from '../../libs/enums/common.enum';
 import { TelegramAuthInput } from '../../libs/dto/member/member.input';
+import { MemberAuthType, MemberStatus, MemberType } from '../../libs/enums/member.enum';
+import { escapeRegex } from '../../libs/config';
 
 /**
  * Unit tests for AuthService.verifyTelegramAuth — the HMAC verification of
@@ -118,5 +120,42 @@ describe('AuthService.verifyTelegramAuth', () => {
 			expect(flipped).toHaveLength(expected.length);
 			expect(() => service.verifyTelegramAuth({ ...payload, hash: flipped })).toThrow(Message.TELEGRAM_AUTH_FAILED);
 		});
+	});
+});
+
+describe('AuthService.createToken', () => {
+	it('keeps private member fields out of the JWT payload', async () => {
+		const jwtService = { signAsync: jest.fn().mockResolvedValue('signed.jwt.token') } as any;
+		const service = new AuthService(jwtService, {} as any);
+		const member = {
+			_id: { toString: () => 'member-id-1' },
+			memberType: MemberType.USER,
+			memberStatus: MemberStatus.ACTIVE,
+			memberAuthType: MemberAuthType.PHONE,
+			memberNick: 'athlete',
+			memberPhone: '+998900000000',
+			memberAddress: 'private address',
+			memberWarnings: 2,
+			memberBlocks: 1,
+			memberPassword: 'hashed-password',
+			memberAccessToken: 'old-token',
+		};
+
+		await service.createToken(member as any);
+
+		const [payload] = jwtService.signAsync.mock.calls[0];
+		expect(payload).toEqual(expect.objectContaining({ _id: 'member-id-1', memberNick: 'athlete' }));
+		expect(payload).not.toHaveProperty('memberPhone');
+		expect(payload).not.toHaveProperty('memberAddress');
+		expect(payload).not.toHaveProperty('memberWarnings');
+		expect(payload).not.toHaveProperty('memberBlocks');
+		expect(payload).not.toHaveProperty('memberPassword');
+	});
+});
+
+describe('escapeRegex', () => {
+	it('turns user text into a bounded literal pattern', () => {
+		expect(escapeRegex('[focus] (now)')).toBe('\\[focus\\] \\(now\\)');
+		expect(escapeRegex('a'.repeat(150))).toHaveLength(100);
 	});
 });

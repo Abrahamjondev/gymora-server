@@ -29,11 +29,26 @@ export class AuthService {
 	}
 	public async createToken(member: Member): Promise<string> {
 		const source = member['_doc'] ? member['_doc'] : member;
-		const payload: T = {};
-		Object.keys(source).forEach((ele) => {
-			payload[ele] = source[ele];
-		});
-		delete payload.memberPassword;
+		// JWTs are signed, not encrypted. Keep only identity and authorization
+		// claims; private profile and moderation fields stay behind authenticated
+		// GraphQL reads.
+		const payload: T = {
+			_id: source._id?.toString(),
+			memberType: source.memberType,
+			memberStatus: source.memberStatus,
+			memberAuthType: source.memberAuthType,
+			memberNick: source.memberNick,
+			memberFullName: source.memberFullName,
+			memberImage: source.memberImage,
+			memberDesc: source.memberDesc,
+			memberCourses: source.memberCourses,
+			memberArticles: source.memberArticles,
+			memberWorkouts: source.memberWorkouts,
+			memberRank: source.memberRank,
+			memberPoints: source.memberPoints,
+			memberLikes: source.memberLikes,
+			memberViews: source.memberViews,
+		};
 
 		return await this.jwtService.signAsync(payload);
 	}

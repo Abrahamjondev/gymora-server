@@ -11,6 +11,7 @@ import { LikeService } from '../like/like.service';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { LikeInput } from '../../libs/dto/like/like.input';
+import { escapeRegex } from '../../libs/config';
 
 @Injectable()
 export class WorkoutService {
@@ -118,11 +119,11 @@ export class WorkoutService {
 		const match: Record<string, any> = { deletedAt: { $exists: false } };
 
 		if (search.workoutDifficulty) match.workoutDifficulty = search.workoutDifficulty;
-		if (search.targetMuscle) match.targetMuscle = { $regex: new RegExp(search.targetMuscle, 'i') };
+		if (search.targetMuscle) match.targetMuscle = { $regex: new RegExp(escapeRegex(search.targetMuscle), 'i') };
 		if (search.text) {
 			match.$or = [
-				{ workoutTitle: { $regex: new RegExp(search.text, 'i') } },
-				{ workoutDesc: { $regex: new RegExp(search.text, 'i') } },
+				{ workoutTitle: { $regex: new RegExp(escapeRegex(search.text), 'i') } },
+				{ workoutDesc: { $regex: new RegExp(escapeRegex(search.text), 'i') } },
 			];
 		}
 		// Public listing only shows free workouts
@@ -200,11 +201,11 @@ export class WorkoutService {
 		const match: Record<string, any> = {};
 
 		if (search.workoutDifficulty) match.workoutDifficulty = search.workoutDifficulty;
-		if (search.targetMuscle) match.targetMuscle = { $regex: new RegExp(search.targetMuscle, 'i') };
+		if (search.targetMuscle) match.targetMuscle = { $regex: new RegExp(escapeRegex(search.targetMuscle), 'i') };
 		if (search.text) {
 			match.$or = [
-				{ workoutTitle: { $regex: new RegExp(search.text, 'i') } },
-				{ workoutDesc: { $regex: new RegExp(search.text, 'i') } },
+				{ workoutTitle: { $regex: new RegExp(escapeRegex(search.text), 'i') } },
+				{ workoutDesc: { $regex: new RegExp(escapeRegex(search.text), 'i') } },
 			];
 		}
 		if (search.isFree !== undefined) match.isFree = search.isFree;
