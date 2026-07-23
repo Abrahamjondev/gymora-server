@@ -19,7 +19,7 @@ export class MemberUpdate {
 	memberNick?: string;
 
 	@IsOptional()
-	@Length(5, 20)
+	@Length(8, 20)
 	@Field(() => String, { nullable: true })
 	memberPassword?: string;
 

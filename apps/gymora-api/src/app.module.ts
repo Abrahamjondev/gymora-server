@@ -20,9 +20,14 @@ import { GymoraBatchController } from './gymora-batch/gymora-batch.controller';
 			uploads: false,
 			autoSchemaFile: true,
 			formatError: (error: T) => {
+				const validationMessage = error?.extensions?.exception?.response?.message;
+				const responseMessage = error?.extensions?.response?.message;
+				const originalMessage = error?.extensions?.originalError?.message;
+				const message = validationMessage ?? responseMessage ?? originalMessage ?? error?.message;
+				const normalizedMessage = Array.isArray(message) ? message.join('; ') : message;
 				const graphQLFormattedError = {
 					code: error?.extensions.code,
-					message: error?.exceptions?.response?.message || error?.extensions?.response?.message || error?.message,
+					message: normalizedMessage,
 				};
 				console.log('GRAPHQL GLOBAL ERR:', graphQLFormattedError);
 
